@@ -1,0 +1,40 @@
+{
+    "real_path": "data_mammals/real/gap_and_ambigless",
+    "sim_path": "",
+    "tokenizer": "AA_TOKENIZER",
+    "out_path": "",
+    "classifiers": [
+        {
+            "classifier": "LogisticRegressionClassifier",
+            "args": {
+                "scale_features": true,
+                "cv": 50,
+                "shuffle_data": true
+            }
+        },
+        {
+            "classifier": "DenseMsaClassifier",
+            "args": {
+                "batch_size": 64,
+                "max_epochs": 500,
+                "early_stopping_patience": 20
+            }
+        },
+        {
+            "classifier": "DenseSiteClassifier",
+            "args": {
+                "batch_size": 64,
+                "max_epochs": 500,
+                "early_stopping_patience": 20
+            }
+        },
+        {
+            "classifier": "AACnnClassifier",
+            "args": {
+                "batch_size": 64,
+                "max_epochs": 500,
+                "early_stopping_patience": 20
+            }
+        }
+    ]
+}

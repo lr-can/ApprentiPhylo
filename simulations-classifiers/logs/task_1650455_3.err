@@ -1,0 +1,10 @@
+/beegfs/data/pli/classifiers/simulations-classifiers_2/.venv/lib/python3.12/site-packages/ignite/handlers/checkpoint.py:16: DeprecationWarning: `TorchScript` support for functional optimizers is deprecated and will be removed in a future PyTorch release. Consider using the `torch.compile` optimizer instead.
+  from torch.distributed.optim import ZeroRedundancyOptimizer
+Traceback (most recent call last):
+  File "/beegfs/data/pli/classifiers/simulations-classifiers_2/src/classifiers/pipeline.py", line 197, in <module>
+    pipeline = Pipeline.from_config(
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/beegfs/data/pli/classifiers/simulations-classifiers_2/src/classifiers/pipeline.py", line 117, in from_config
+    out_dir = c["out_dir"] if "out_dir" in c else c["classifier"]
+                                                  ~^^^^^^^^^^^^^^
+TypeError: string indices must be integers, not 'str'

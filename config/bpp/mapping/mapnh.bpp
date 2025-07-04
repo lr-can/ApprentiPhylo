@@ -1,0 +1,45 @@
+alphabet=DNA
+
+### Alignment
+
+input.data1=alignment(file = $(FSEQ), sites_to_use = all, remove_stop_codons = yes )
+
+### Initial tree as a starting point for optimization
+
+input.tree1=user(file=$(TREE))
+
+### File of the modeling
+
+model1=JC69()
+
+root_freq1=Full()
+
+process1=Homogeneous(model=1, tree=1, root_freq=1)
+
+
+
+# ----------------------------------------------------------------------------------------
+#                                     Phylo likelihood specification
+# ----------------------------------------------------------------------------------------
+
+phylo1=Single(process=1, data=1)
+
+
+# ----------------------------------------------------------------------------------------
+#                                     Result
+# ----------------------------------------------------------------------------------------
+
+result = phylo1
+
+### normalization with the same model in which omega=1
+# allow to have a substitution count normalized by count uncer neutral evolution
+
+nullProcessParams = *=1
+
+### Type of event counted
+
+map.type = All
+
+
+output.counts = PerType(file=$(REP)/$(SEQ)_counts,splitNorm=T)
+

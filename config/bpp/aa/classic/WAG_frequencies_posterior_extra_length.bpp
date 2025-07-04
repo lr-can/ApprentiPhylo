@@ -1,0 +1,27 @@
+alphabet = Protein
+
+# Input data: alignment file to use as the root sequence
+input.data1=alignment(file=align_path, format=Fasta(extended=yes, strict_name=no), sites_to_use = all, max_gap_allowed = 50%, max_unresolved_allowed = 100%)
+
+# Evolutionary tree
+input.tree1=user(file=tree_path,format=Newick)
+
+root_freq1 = Fixed(init=observed, data=1)
+
+# Model of evolution: Jukes-Cantor 1969 (JC69)
+model1 = WAG01+F(frequencies=Fixed(init=observed, data=1,init.observedPseudoCount=1), rate=1)
+
+#rate distribution
+rate_distribution1 = Constant()
+
+# Root frequencies: use the stationary frequencies of the model
+process1 = Homogeneous(model=1, rate=1, tree=1, root_freq=1)
+
+phylo1 = Simple(process=1, data=1)
+
+
+#simul 
+simul1 = simul(phylo=1, output.sequence.file = output_path, output.sequence.format = Fasta, output.internal.sequences = false, nullnodes = Leaves)
+
+
+

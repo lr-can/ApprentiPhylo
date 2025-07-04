@@ -1,0 +1,13 @@
+README.md
+setup.py
+src/deelogeny_m2/__init__.py
+src/deelogeny_m2/alignment_descriptor.py
+src/deelogeny_m2/computing_trees.py
+src/deelogeny_m2/mapping2model.py
+src/deelogeny_m2/preprocess.py
+src/deelogeny_m2/simulators.py
+src/deelogeny_m2.egg-info/PKG-INFO
+src/deelogeny_m2.egg-info/SOURCES.txt
+src/deelogeny_m2.egg-info/dependency_links.txt
+src/deelogeny_m2.egg-info/requires.txt
+src/deelogeny_m2.egg-info/top_level.txt
