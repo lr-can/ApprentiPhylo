@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 import os
 
-# 读取 requirements.txt
+# Read requirements.txt
 install_requires = []
 if os.path.exists("requirements.txt"):
     with open("requirements.txt") as f:

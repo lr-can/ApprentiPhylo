@@ -48,10 +48,10 @@ GROUP_MARKERS = {}
 MARKER_SEQ = ['circle', 'square', 'diamond', 'cross', 'triangle-up', 'triangle-down', 'star', 'x']
 COLOR_SEQ = pc.qualitative.Plotly
 
-# group颜色映射
+# Group color mapping
 GROUP_COLORS = {}
 
-# group与marker形状映射
+# Group to marker shape mapping
 GROUP_MARKERS = {}
 MARKER_SEQ = ['circle', 'square', 'diamond', 'cross', 'triangle-up', 'triangle-down', 'star', 'x']
 
@@ -59,7 +59,7 @@ MARKER_SEQ = ['circle', 'square', 'diamond', 'cross', 'triangle-up', 'triangle-d
 GROUP_ROOT = '../results/MPD/viridiplantae_group_results'
 RUNS_ROOT = '../results/simulations-classifiers/runs_viridiplantae'
 
-# 获取所有可用的组
+# Get all available groups
 def get_available_groups():
     abs_group_root = os.path.abspath(GROUP_ROOT)
     if not os.path.exists(GROUP_ROOT):
@@ -153,14 +153,14 @@ def collect_all_data():
     df = pd.DataFrame(records)
     return df
 
-# 初始化数据
+# Initialize data
 DATA_DF = collect_all_data()
 
-# 创建Dash应用
+# Create Dash application
 app = Dash(__name__)
 app.title = '2D Distance-Classifier Interactive Visualization'
 
-# 获取可用的组
+# Get available groups
 available_groups = sorted(DATA_DF['group'].unique()) if not DATA_DF.empty else []
 
 # UI layout
@@ -233,26 +233,26 @@ def update_plot(selected_groups, selected_clfs, line_check, data2_check):
         df = df[df['group'].isin(selected_groups)]
     if selected_clfs:
         df = df[df['classifier'].isin(selected_clfs)]
-    # 严格区分with_data2/without_data2
+    # Strictly distinguish with_data2/without_data2
     def is_with_data2(sim_name):
         return 'data2' in sim_name.lower()
     show_with = 'with_data2' in data2_check
     show_without = 'without_data2' in data2_check
-    # 只保留用户选择的子组
+    # Only keep user-selected subgroups
     df = df[df['sim_name'].apply(lambda x: (is_with_data2(x) and show_with) or (not is_with_data2(x) and show_without))]
     fig = go.Figure()
-    # 分配group-marker
+    # Assign group-marker
     group_list = sorted(df['group'].unique())
     for i, g in enumerate(group_list):
         GROUP_MARKERS[g] = MARKER_SEQ[i % len(MARKER_SEQ)]
-    # 分配classifier颜色
+    # Assign classifier colors
     clf_list = sorted(df['classifier'].unique())
     CLASSIFIER_COLORS = {c: COLOR_SEQ[i % len(COLOR_SEQ)] for i, c in enumerate(clf_list)}
-    # 先按group, classifier, with/without_data2分组
+    # First group by group, classifier, with/without_data2
     for (group_val, clf, is_with), subdf in df.groupby(['group', 'classifier', df['sim_name'].apply(is_with_data2)]):
         if (is_with and not show_with) or (not is_with and not show_without):
             continue
-        # 按后缀数值递增排序
+        # Sort by suffix value in ascending order
         subdf = subdf.copy()
         subdf['suffix_value'] = subdf['sim_name'].apply(lambda x: extract_suffix_value(extract_suffix(x)))
         subdf = subdf.sort_values('suffix_value')

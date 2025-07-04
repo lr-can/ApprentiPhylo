@@ -185,10 +185,10 @@ class Bppsimulator():
         align_names = os.listdir(self.align)
 
         date = datetime.now()
-        # 获取结果类型（如BPP）和主名（如WAG_frequencies_posterior_extra_length_data2）
+        # Get result type (e.g., BPP) and main name (e.g., WAG_frequencies_posterior_extra_length_data2)
         result_type = self.outputsim.parent.name  # BPP
         main_name = self.outputsim.name  # WAG_frequencies_posterior_extra_length_data2
-        # 简化主名：WAG_frequencies_posterior_extra_length_data2 -> WAG_FPEL_data2
+        # Simplify main name: WAG_frequencies_posterior_extra_length_data2 -> WAG_FPEL_data2
         parts = main_name.split('_')
         if len(parts) >= 4:
             short_main = f"{parts[0]}_{''.join([p[0].upper() for p in parts[1:4]])}"  # WAG_FPEL
