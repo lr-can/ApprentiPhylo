@@ -4,198 +4,128 @@
 **Supervision:** M. GUEGUEN LAURENT, LBBE, Lyon 1  
 **Contact:** PENGJUNLI2022@163.COM
 
-This project is based on the original project: https://github.com/LIPENGJUN2022/deelogeny-m2. In my contribution, I have extended the pipeline to include additional simulations, implemented tools to calculate Mean Phylogenetic Distance (MPD), explored various classifiers, and developed a web-based bidimensional visualization to better analyze and present the results.
+# Data
 
-# Before You Start: Extract Required Data Files
+To run  the pipeline, you need a diretory with a set of aligned
+protein sequences in fasta format. We provide examples of such sets in
 
-Before starting the pipeline, you should extract the following archive files to set up your data and results directories:
-- `data.tar.gz`
-- `Original_Data.tar.gz`
-- `results.tar.gz`
+- `data/prot_mammals.tgz`
+- `data/prot_viridiplantae.tgz`
 
-Use the following commands in your Linux terminal:
+Use the following commands in your Linux terminal to uncompress these archives:
 
 ```bash
-tar -xzf data.tar.gz
-tar -xzf Original_Data.tar.gz
-tar -xzf results.tar.gz
+tar -xzf data/prot_mammals.tgz
+tar -xzf data/prot_viridiplantae.tgz
 ```
 
-Make sure these files are extracted in the project root directory so that all scripts and workflows can find the necessary data.
+<!-- Make sure these files are extracted in the project root directory so that all scripts and workflows can find the necessary data. -->
 
 # Simulator Installation
 
 This project relies on the Bio++ suite of libraries and simulators. To ensure compatibility and flexibility, we recommend installing the development version of Bio++ from source, as described in the [official Bio++ installation guide](https://github.com/BioPP/bpp-documentation/wiki/Installation).
 
-## Prerequisites
 
-- **git** and **cmake** must be installed on your system.
-- You will also need a C++ compiler (e.g., g++) and the Eigen3 library (version >= 3.8).
+<!-- # Dataset Filtering -->
 
-Install prerequisites on Ubuntu/Debian:
-```bash
-sudo apt update
-sudo apt install git cmake g++ libeigen3-dev
-```
+<!-- **Note:** This part is to be updated for more general data (ie not -->
+<!-- with the fam2nbseqnbspec file). -->
 
-## Step 1: Set Up Source Directory
+<!-- For downstream analyses, we recommend using the files in the -->
+<!-- `gap_and_ambigless/` subdirectory, as these have had both gaps and -->
+<!-- ambiguous sites removed, ensuring the highest data quality. -->
 
-Create a directory for the Bio++ source code:
-```bash
-PROJECTDIR=$HOME/devel/bpp/
-mkdir -p $PROJECTDIR
-cd $PROJECTDIR
-```
+<!-- For this project, we require MSA (Multiple Sequence Alignment) protein -->
+<!-- family files that contain more than two species and more than two -->
+<!-- sequences per family. The information about the number of sequences -->
+<!-- and species for each family is provided in the corresponding -->
+<!-- `fam2nbseqnbspec.mono` file within each dataset folder. -->
 
-## Step 2: Clone the Required Repositories
+<!-- To filter and select only the families that satisfy these conditions, -->
+<!-- we use the `filter_mono.py` script. This script reads the -->
+<!-- `fam2nbseqnbspec.mono` file, identifies the families meeting the -->
+<!-- criteria, and copies the corresponding MSA files to a new directory -->
+<!-- (e.g., `data/mammals_new` or `data/viridiplantae_new`). -->
 
-Clone the necessary Bio++ components:
-```bash
-git clone https://github.com/BioPP/bpp-core
-git clone https://github.com/BioPP/bpp-seq
-git clone https://github.com/BioPP/bpp-popgen
-git clone https://github.com/BioPP/bpp-phyl
-git clone https://github.com/BioPP/bppsuite
-```
+<!-- ### Usage Example -->
 
-## Step 3: Compile and Install Each Component
+<!-- #### For mammals: -->
+<!-- ```bash -->
+<!-- python3 scripts/filter_mono.py \ -->
+<!--   --source-dir data/prot_mammals \ -->
+<!--   --fam-file data/prot_mammals/fam2nbseqnbspec.mono \ -->
+<!--   --target-dir data/mammals_mono -->
+<!-- ``` -->
 
-For each component (start with `bpp-core` and `bpp-seq`), run the following commands:
-```bash
-cd $PROJECTDIR/bpp-core
-mkdir build
-cd build
-cmake -B . -S .. -DCMAKE_INSTALL_PREFIX=$HOME/.local
-make
-make install
-```
-Repeat the above steps for each of the other components (`bpp-seq`, `bpp-popgen`, `bpp-phyl`, `bppsuite`).
+<!-- - `--source-dir`: Directory containing the original MSA protein family files (e.g., `.aln` files). -->
+<!-- - `--fam-file`: Path to the `fam2nbseqnbspec.mono` file listing the number of sequences and species for each family. -->
+<!-- - `--target-dir`: Output directory for the filtered MSA files (e.g., `data/mammals_new` or `data/viridiplantae_new`). -->
 
-## Step 4: Set Environment Variables
+<!-- Only the MSA files for families with more than two species and more -->
+<!-- than two sequences will be copied to the target directory. -->
 
-If you installed Bio++ in a non-standard location (e.g., `$HOME/.local`), add the following lines to your `~/.bashrc`:
-```bash
-export CPATH=$CPATH:$HOME/.local/include
-export LIBRARY_PATH=$LIBRARY_PATH:$HOME/.local/lib
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.local/lib
-```
-Then reload your shell:
-```bash
-source ~/.bashrc
-```
+<!-- # Dataset Preprocessing -->
 
-## Step 5: Verify Installation
+<!-- After filtering the MSA protein family files, we preprocess the datasets to remove outliers, gaps, and ambiguous sites. This is done using the `scripts/preprocess.py`. -->
 
-You can now use the Bio++ binaries and libraries in your project. For more details, refer to the [official Bio++ documentation](https://github.com/BioPP/bpp-documentation/wiki/Installation).
+<!-- ### Usage Example -->
 
-> **Note:** For every edit of the code in `/scripts` or `/src`, you should run:
-> ```bash
-> pip install .
-> ```
-> to update your environment and ensure all changes are available for import and use.
+<!-- ```bash -->
+<!-- python3 scripts/preprocess.py \ -->
+<!--   --input data/prot_mammals_mono \ -->
+<!--   --output data/prot_mammals_clean \ -->
+<!--   --minseq 5 \ -->
+<!--   --maxsites 10000 \ -->
+<!--   --minsites 50 \ -->
+<!--   --alphabet aa -->
+<!-- ``` -->
 
-# Dataset Filtering
+<!-- - `--input`: Directory containing the filtered MSA files (e.g., `data/mammals_new`). -->
+<!-- - `--output`: Directory where the preprocessing results will be saved (e.g., `results/preprocess_mammals_new`). -->
+<!-- - `--minseq`: Minimum number of sequences required to keep an alignment. -->
+<!-- - `--maxsites`: Maximum number of sites (columns) allowed in an alignment. -->
+<!-- - `--minsites`: Minimum number of sites (columns) required in an alignment. -->
+<!-- - `--alphabet`: Sequence alphabet, either `aa` (amino acid) or `dna`. -->
 
-For this project, we require MSA (Multiple Sequence Alignment) protein family files that contain more than two species and more than two sequences per family. The information about the number of sequences and species for each family is provided in the corresponding `fam2nbseqnbspec.mono` file within each dataset folder.
+<!-- ### Output Directory Structure -->
 
-To filter and select only the families that satisfy these conditions, we use the `filter_mono.py` script. This script reads the `fam2nbseqnbspec.mono` file, identifies the families meeting the criteria, and copies the corresponding MSA files to a new directory (e.g., `data/mammals_new` or `data/viridiplantae_new`).
+<!-- After running the preprocessing script, the output directory will contain several subfolders: -->
 
-### Usage Example
+<!-- - `clean_data/`: Alignments that passed the basic filtering (length and sequence count). -->
+<!-- - `gap_less/`: Alignments with all columns containing gaps removed. -->
+<!-- - `ambigless/`: Alignments with ambiguous sites removed (from clean_data). -->
+<!-- - `gap_and_ambigless/`: Alignments with both gaps and ambiguous sites removed (recommended for downstream analysis). -->
 
-#### For mammals:
-```bash
-python3 scripts/filter_mono.py \
-  --source-dir Original_Data/mammals/mammals_prot_results \
-  --fam-file Original_Data/mammals/fam2nbseqnbspec.mono \
-  --target-dir data/mammals_new
-```
+<!-- **Note:** For downstream analyses, we recommend using the files in the `gap_and_ambigless/` subdirectory, as these have had both gaps and ambiguous sites removed, ensuring the highest data quality. -->
 
-#### For viridiplantae:
-```bash
-python3 scripts/filter_mono.py \
-  --source-dir Original_Data/viridiplantae/viridiplantae_prot_results \
-  --fam-file Original_Data/viridiplantae/fam2nbseqnbspec.mono \
-  --target-dir data/viridiplantae_new
-```
 
-- `--source-dir`: Directory containing the original MSA protein family files (e.g., `.aln` files).
-- `--fam-file`: Path to the `fam2nbseqnbspec.mono` file listing the number of sequences and species for each family.
-- `--target-dir`: Output directory for the filtered MSA files (e.g., `data/mammals_new` or `data/viridiplantae_new`).
+# Phylogenetic Trees
 
-Only the MSA files for families with more than two species and more than two sequences will be copied to the target directory.
+Following the data, you need phylogenetic trees for each protein
+family alignment. Those trees will be stored in newick format, and
+each tree filename must have the same prefix as its related alignment
+filename, with extension 'nwk': 'FAM001395_tree.nwk' for
+'FAM001395.fasta'.
 
-# Dataset Preprocessing
+## Infer Phylogenetic Trees
 
-After filtering the MSA protein family files, we preprocess the datasets to remove outliers, gaps, and ambiguous sites. This is done using the `scripts/preprocessing_dataset.py` script, which relies on the logic implemented in `deelogeny_m2/preprocess.py`.
+It is also possible to build those trees using the
+`scripts/compute_tree.py` script. The underlying tree inference is
+performed using the FastTree program. So ensure that this program is
+available.
 
 ### Usage Example
 
-#### For mammals:
-```bash
-python3 scripts/preprocessing_dataset.py \
-  --input data/mammals_new \
-  --output results/preprocess_mammals_new \
-  --minseq 5 \
-  --maxsites 10000 \
-  --minsites 10 \
-  --type aa
-```
-
-#### For viridiplantae:
-```bash
-python3 scripts/preprocessing_dataset.py \
-  --input data/viridiplantae_new \
-  --output results/preprocess_viridiplantae_new \
-  --minseq 5 \
-  --maxsites 10000 \
-  --minsites 10 \
-  --type aa
-```
-
-- `--input`: Directory containing the filtered MSA files (e.g., `data/mammals_new`).
-- `--output`: Directory where the preprocessing results will be saved (e.g., `results/preprocess_mammals_new`).
-- `--minseq`: Minimum number of sequences required to keep an alignment.
-- `--maxsites`: Maximum number of sites (columns) allowed in an alignment.
-- `--minsites`: Minimum number of sites (columns) required in an alignment.
-- `--type`: Sequence type, either `aa` (amino acid) or `dna`.
-
-### Output Directory Structure
-
-After running the preprocessing script, the output directory (e.g., `results/preprocess_mammals_new`) will contain several subfolders:
-
-- `clean_data/`: Alignments that passed the basic filtering (length and sequence count).
-- `gap_less/`: Alignments with all columns containing gaps removed.
-- `ambigless/`: Alignments with ambiguous sites removed (from clean_data).
-- `gap_and_ambigless/`: Alignments with both gaps and ambiguous sites removed (recommended for downstream analysis).
-- `preprocess.log`: Log file summarizing the filtering and cleaning steps.
-
-**Note:** For downstream analyses, we recommend using the files in the `gap_and_ambigless/` subdirectory, as these have had both gaps and ambiguous sites removed, ensuring the highest data quality.
-
-# Infer Phylogenetic Trees
-
-After preprocessing, you can infer phylogenetic trees for each protein family alignment using the `scripts/compute_tree.py` script, which utilizes the logic in `deelogeny_m2/computing_trees.py`. The underlying tree inference is performed using the FastTree program.
-
-### Usage Example
-
-#### For mammals:
 ```bash
 python3 scripts/compute_tree.py \
-  --input results/preprocess_mammals_new/gap_and_ambigless \
-  --output results/trees_mammals_new \
-  --alphabet aa
-```
-
-#### For viridiplantae:
-```bash
-python3 scripts/compute_tree.py \
-  --input results/preprocess_viridiplantae_new/gap_and_ambigless \
-  --output results/trees_viridiplantae_new \
+  --input data/prot_mammals \
+  --output data/prot_mammals/trees \
   --alphabet aa
 ```
 
 - `--input`: Directory containing the preprocessed alignments (recommended: `gap_and_ambigless` subfolder).
 - `--output`: Directory where the inferred phylogenetic trees will be saved.
-- `--alphabet`: Sequence type, `aa` for amino acids or `nt` for nucleotides.
+- `--alphabet`: Sequence alphabet, `aa` for amino acids or `nt` for nucleotides.
 - `--only`: (Optional) Path to a file listing specific alignment filenames to process (one per line).
 
 ### Underlying Command
@@ -211,70 +141,51 @@ fasttree -gtr -gamma -nt <alignment_file>
 
 Each output tree is saved in Newick format with the suffix `_tree.nwk` in the specified output directory.
 
-You can also use the provided `computing_trees.sh` script to batch process both mammals and viridiplantae datasets automatically.
+# Simulation (Bppseqgen)
 
-# Simulation (Bppsimulator)
-
-You can simulate sequence alignments using the Bppsimulator, which is accessible via the `scripts/simulation.py` script. This tool allows you to generate simulated alignments based on phylogenetic trees and various evolutionary models using the Bio++ suite.
+You can simulate sequence alignments using bppseqgen, which is
+accessible via the `scripts/simulation.py` script. This tool allows
+you to generate simulated alignments based on phylogenetic trees and
+various evolutionary models using the Bio++ suite.
 
 ### Usage Example
 
-```bash
-python3 scripts/simulation.py \
-  --simulator BPP \
-  --align <reference_alignment_dir> \
-  --tree <tree_dir> \
-  --output <output_dir> \
-  --tools <path_to_tools> \
-  --config <config_file1> <config_file2> ... \
-  --external_branch_length <length> \
-  --root_length <length> \
-  --modelmapping <model_mapping_dir> \
-  --gap True
-```
-
 #### Key Arguments
-- `--simulator`: Must include `BPP` to use the Bppsimulator.
-- `--align`: Directory containing reference alignments (e.g., from `gap_and_ambigless`).
-- `--tree`: Directory containing phylogenetic trees (e.g., from `results/trees_mammals_new`).
+- `--align`: Directory containing reference alignments.
+- `--tree`: Directory containing phylogenetic trees.
 - `--output`: Output directory for simulated alignments.
-- `--tools`: Path to necessary tools (e.g., Bio++ binaries or Apptainer/Singularity images).
 - `--config`: One or more BPP configuration files specifying simulation parameters.
-- `--external_branch_length`: (Optional) Length to set for external branches in the tree.
-- `--root_length`: (Optional) Length to set for the root branch in the tree.
-- `--modelmapping`: (Optional) Directory containing model mapping files.
-- `--gap`: Whether to add gaps to simulated alignments (`True` or `False`).
 
 #### Example
 ```bash
 python3 scripts/simulation.py \
-  --simulator BPP \
-  --align results/preprocess_mammals_new/gap_and_ambigless \
-  --tree results/trees_mammals_new \
-  --output results/mammals_simulations \
-  --tools $HOME/.local/bin \
+  --align data/prot_mammals \
+  --tree data/prot_mammals/trees \
   --config config/bpp/aa/WAG_frequencies.bpp \
-  --external_branch_length 0.1 \
-  --root_length 0.05 \
-  --gap True
+  --output results/mammals_simulations/WAG+F 
 ```
 
-This will generate simulated alignments using the Bppsimulator, with the specified evolutionary model and tree modifications. The output will be saved in the specified directory for downstream analysis.
+This will generate simulated alignments using bppseqgen, with the
+specified evolutionary model in config files. The output will be saved
+in the specified directory for downstream analysis.
 
 ## Step 0: Write the Configuration File for Simulation
 
-Before running the Bppsimulator, you need to prepare a configuration file that specifies the evolutionary model, input alignment, tree, and simulation parameters. This file is required by the simulator to know how to generate the simulated alignments.
+Before running bppseqgen, you need to prepare a configuration file
+that specifies the evolutionary model, input alignment, tree, and
+simulation parameters. This file is required by the simulator to know
+how to generate the simulated alignments.
 
-Below is an example configuration file for the DSO78 model (`config/bpp/aa/classic/DSO78_frequencies.bpp`):
+Below is an example configuration file for the WAG+F model (`config/bpp/aa/WAG_frequencies.bpp`):
 
 ```ini
 alphabet = Protein
 
 # Input data: alignment file to use as the root sequence
-input.data1=alignment(file=align_path, format=Fasta(extended=yes, strict_name=no), sites_to_use = all, max_gap_allowed = 50%, max_unresolved_allowed = 100%)
+input.data1=alignment(file=$(IN_SEQ), format=Fasta(extended=yes, strict_name=no), sites_to_use = all, max_gap_allowed = 50%, max_unresolved_allowed = 100%)
 
 # Evolutionary tree
-input.tree1=user(file=tree_path,format=Newick)
+input.tree1=user(file=$(TREE),format=Newick)
 
 root_freq1 = Fixed(init=observed, data=1)
 
@@ -288,69 +199,66 @@ rate_distribution1 = Constant()
 process1 = Homogeneous(model=1, rate=1, tree=1, root_freq=1)
 
 #simul 
-simul1 = simul(process=1, output.sequence.file = output_path, output.sequence.format = Fasta, output.internal.sequences = false, number_of_sites = nseq)
+simul1 = simul(process=1, output.sequence.file = $(OUTPUT_DIR), output.sequence.format = Fasta, output.internal.sequences = false, number_of_sites = $(NSEQ))
 ```
 
 - `alphabet = Protein`: Specifies the type of sequences (protein).
 - `input.data1`: Defines the input alignment file and its format.
 - `input.tree1`: Specifies the evolutionary tree in Newick format.
 - `model1`: Sets the evolutionary model (here, DSO78 with observed frequencies).
+- `process1`: Sets the evolutionary process used (model, tree, root frequencies, rate distribution).
 - `simul1`: Defines the simulation process and output format.
 
-You can modify this template for other models or simulation scenarios as needed. Save your configuration files in the appropriate directory (e.g., `config/bpp/aa/classic/`).
+<!-- ### Model Suffixes and Their Meanings -->
+<!-- - **_frequencies** or **_F**: Use the observed amino acid frequencies from the MSA (multiple sequence alignment) to generate the root sequence, replacing the default frequencies in the model. -->
+<!-- - **sampling_seq** or **_EP**: Sample the root sequence by position (i.e., sample each site independently according to the observed frequencies at that position in the MSA). -->
+<!-- - **_data2**: Randomly select another MSA from the same dataset to generate the root sequence, instead of using the current family. -->
+<!-- - **_posterior** or **_P**: Use a posterior method to simulate the sequences, typically involving more sophisticated statistical inference. -->
+<!-- - **extra_length** or **_E**: Add extra length to the branches of the tree during simulation. -->
+<!-- - **_root** or **_R**: Add a specific length to the root branch of the tree during simulation. -->
 
-# Simulation Examples and Model Naming Conventions
+<!-- ### Example Naming Interpretations -->
+<!-- - `WAG_frequencies`: Simulations using the WAG model, with root sequence generated using observed MSA frequencies. -->
+<!-- - `LG08_frequencies_sampling_seq`: Simulations using the LG08 model, with root sequence sampled by position. -->
+<!-- - `JTT92_frequencies_data2`: Simulations using the JTT92 model, with root sequence generated from a randomly selected MSA in the dataset. -->
+<!-- - `WAG_frequencies_posterior_extra_length`: Simulations using the WAG model, posterior method, and extra branch length added to the tree. -->
+<!-- - `WAG_sampling_seq_root_0.1`: Simulations using the WAG model, root sequence sampled by position, and root branch length set to 0.1. -->
 
-In this project, several evolutionary models and simulation strategies are used. The main models include:
-- **DSO78**
-- **JTT92**
-- **LG08**
-- **WAG**
+<!-- These conventions are reflected in the simulation shell scripts (e.g., in the `mammals/` directory) and in the output directory names. They help you quickly identify the simulation strategy and parameters used for each set of results. -->
 
-These models are used to simulate sequence evolution under different assumptions. The simulation scripts and output directories use a set of suffixes to indicate the specific simulation strategy or parameterization. Here is a guide to the naming conventions:
+<!-- # Batch Running All Simulation Scripts -->
 
-### Model Suffixes and Their Meanings
-- **_frequencies** or **_F**: Use the observed amino acid frequencies from the MSA (multiple sequence alignment) to generate the root sequence, replacing the default frequencies in the model.
-- **sampling_seq** or **_EP**: Sample the root sequence by position (i.e., sample each site independently according to the observed frequencies at that position in the MSA).
-- **_data2**: Randomly select another MSA from the same dataset to generate the root sequence, instead of using the current family.
-- **_posterior** or **_P**: Use a posterior method to simulate the sequences, typically involving more sophisticated statistical inference.
-- **extra_length** or **_E**: Add extra length to the branches of the tree during simulation.
-- **_root** or **_R**: Add a specific length to the root branch of the tree during simulation.
+<!-- To efficiently run all simulation scenarios for both mammals and viridiplantae, you can use the provided `run_all_simulations.sh` script. This script will automatically open a new terminal window for each simulation shell script found in the `mammals/` and `viridiplantae/` directories, and execute them sequentially with a short delay between each launch. -->
 
-### Example Naming Interpretations
-- `WAG_frequencies`: Simulations using the WAG model, with root sequence generated using observed MSA frequencies.
-- `LG08_frequencies_sampling_seq`: Simulations using the LG08 model, with root sequence sampled by position.
-- `JTT92_frequencies_data2`: Simulations using the JTT92 model, with root sequence generated from a randomly selected MSA in the dataset.
-- `WAG_frequencies_posterior_extra_length`: Simulations using the WAG model, posterior method, and extra branch length added to the tree.
-- `WAG_sampling_seq_root_0.1`: Simulations using the WAG model, root sequence sampled by position, and root branch length set to 0.1.
+<!-- ### Usage -->
 
-These conventions are reflected in the simulation shell scripts (e.g., in the `mammals/` directory) and in the output directory names. They help you quickly identify the simulation strategy and parameters used for each set of results.
+<!-- ```bash -->
+<!-- bash run_all_simulations.sh -->
+<!-- ``` -->
 
-# Batch Running All Simulation Scripts
+<!-- This will: -->
+<!-- - Loop through all `.sh` scripts in the `mammals/` directory and run each in a new terminal. -->
+<!-- - Then loop through all `.sh` scripts in the `viridiplantae/` directory and run each in a new terminal. -->
 
-To efficiently run all simulation scenarios for both mammals and viridiplantae, you can use the provided `run_all_simulations.sh` script. This script will automatically open a new terminal window for each simulation shell script found in the `mammals/` and `viridiplantae/` directories, and execute them sequentially with a short delay between each launch.
+<!-- Each simulation script corresponds to a different model or simulation scenario (see the section on model naming conventions for details). This approach allows you to launch all simulations in parallel, making full use of your system's resources. -->
 
-### Usage
-
-```bash
-bash run_all_simulations.sh
-```
-
-This will:
-- Loop through all `.sh` scripts in the `mammals/` directory and run each in a new terminal.
-- Then loop through all `.sh` scripts in the `viridiplantae/` directory and run each in a new terminal.
-
-Each simulation script corresponds to a different model or simulation scenario (see the section on model naming conventions for details). This approach allows you to launch all simulations in parallel, making full use of your system's resources.
-
-**Note:**
-- Make sure you have the necessary permissions to execute the scripts and that your system supports opening multiple terminal windows (the script uses `gnome-terminal`).
-- You can monitor the progress and output of each simulation in its own terminal window.
+<!-- **Note:** -->
+<!-- - Make sure you have the necessary permissions to execute the scripts and that your system supports opening multiple terminal windows (the script uses `gnome-terminal`). -->
+<!-- - You can monitor the progress and output of each simulation in its own terminal window. -->
 
 # Mean Phylogenetic Distance (MPD) Analysis
 
-The Mean Phylogenetic Distance (MPD) is a metric used to quantify the average evolutionary distance between simulated and empirical sequences in a phylogenetic tree. In this project, MPD is calculated by combining empirical and simulated alignments, inferring a tree, and then measuring the distance from each simulated sequence to its closest empirical sequence.
+The Mean Phylogenetic Distance (MPD) is a metric used to quantify the
+average evolutionary distance between simulated and empirical
+sequences in a phylogenetic tree. In this project, MPD is calculated
+by combining empirical and simulated alignments, inferring a tree, and
+then measuring the distance from each simulated sequence to its
+closest empirical sequence.
 
-This analysis is performed using the `scripts/MPD/process_alignments.py` script, which automates the process of combining alignments, building trees, and calculating distances.
+This analysis is performed using the
+`scripts/MPD/process_alignments.py` script, which automates the
+process of combining alignments, building trees, and calculating
+distances.
 
 ## How MPD is Calculated
 1. For each protein family, the empirical and simulated alignments are combined into a single alignment file.
@@ -362,19 +270,10 @@ This analysis is performed using the `scripts/MPD/process_alignments.py` script,
 
 ### For mammals (single model):
 ```bash
-python scripts/MPD/process_alignments.py \
-  --empirical results/preprocess_mammals_new/gap_and_ambigless \
-  --simulation results/mammals_simulations/BPP/WAG_frequencies \
-  --output results/MPD/mammals_results/WAG_frequencies \
-  --plot --threads 5
-```
-
-### For viridiplantae (single model):
-```bash
-python scripts/MPD/process_alignments.py \
-  --empirical results/preprocess_viridiplantae_new/gap_and_ambigless \
-  --simulation results/viridiplantae_simulations/BPP/WAG_frequencies \
-  --output results/MPD/viridiplantae_results/WAG_frequencies \
+python3 scripts/MPD/process_alignments.py \
+  --empirical data/prot_mammals \
+  --simulation results/mammals_simulations/WAG+F \
+  --output results/MPD/mammals_results/WAG+F \
   --plot --threads 5
 ```
 
@@ -384,77 +283,83 @@ python scripts/MPD/process_alignments.py \
 - `--plot`: (Optional) Generate distribution plots for the calculated distances.
 - `--threads`: (Optional) Number of parallel processes to use.
 
-### Batch Analysis
-You can also use the provided shell scripts (e.g., `calcule_distance_in_tree/runs_mammals.sh`, `calcule_distance_in_tree/runs_viridiplantae.sh`) to batch process all models and scenarios. These scripts will output all results to the `results/MPD/` directory.
+<!-- ### Batch Analysis -->
+<!-- You can also use the provided shell scripts (e.g., `calcule_distance_in_tree/runs_mammals.sh`, `calcule_distance_in_tree/runs_viridiplantae.sh`) to batch process all models and scenarios. These scripts will output all results to the `results/MPD/` directory. -->
+
 
 ### Output
 - Results are saved as CSV files in the specified output directory, with the mean and distribution of distances for each family/model.
 - Plots of the distance distributions are also generated if `--plot` is specified.
 
-This MPD analysis allows you to quantitatively compare the evolutionary similarity between simulated and empirical data across different models and simulation strategies.
+This MPD analysis allows you to quantitatively compare the
+evolutionary similarity between simulated and empirical data across
+different models and simulation strategies.
 
 # MPD Batch Analysis and Plotting Scripts
 
-To facilitate large-scale MPD (Mean Phylogenetic Distance) analysis and visualization, several batch scripts and utilities are provided. These scripts automate the process of running MPD calculations and generating summary plots for all models and simulation scenarios.
+To facilitate large-scale MPD (Mean Phylogenetic Distance) analysis
+and visualization, several batch scripts and utilities are provided.
+These scripts automate the process of running MPD calculations and
+generating summary plots for all models and simulation scenarios.
 
-## Overview of Scripts
+<!-- ## Overview of Scripts -->
 
-- **runs_mammals.sh**: Batch processes all relevant simulation models for mammals, calculates MPD, and generates result CSVs and plots in `results/MPD/mammals_results/`.
-- **runs_viridiplantae.sh**: Batch processes all relevant simulation models for viridiplantae, calculates MPD, and generates result CSVs and plots in `results/MPD/viridiplantae_results/`.
-- **runs_3_model.sh**: Quickly runs MPD analysis for three basic models (DSO78, JTT92, LG08) for viridiplantae, outputting to `results/MPD/viridiplantae_results/`.
-- **plot_mammals.sh**: Batch generates summary plots for all result folders in `results/MPD/mammals_results/`.
-- **plot_viridiplantae.sh**: Batch generates summary plots for all result folders in `results/MPD/viridiplantae_results/`.
-- **create_folders.py**: Organizes and groups result folders for viridiplantae into logical groups in `results/MPD/viridiplantae_group_results/` for comparative analysis.
-- **plot_groups.py**: Generates combined distribution and boxplot visualizations for each group in `results/MPD/viridiplantae_group_results/`, saving plots to `results/MPD/viridiplantae_group_plots/`.
+<!-- - **runs_mammals.sh**: Batch processes all relevant simulation models for mammals, calculates MPD, and generates result CSVs and plots in `results/MPD/mammals_results/`. -->
+<!-- - **runs_viridiplantae.sh**: Batch processes all relevant simulation models for viridiplantae, calculates MPD, and generates result CSVs and plots in `results/MPD/viridiplantae_results/`. -->
+<!-- - **runs_3_model.sh**: Quickly runs MPD analysis for three basic models (DSO78, JTT92, LG08) for viridiplantae, outputting to `results/MPD/viridiplantae_results/`. -->
+<!-- - **plot_mammals.sh**: Batch generates summary plots for all result folders in `results/MPD/mammals_results/`. -->
+<!-- - **plot_viridiplantae.sh**: Batch generates summary plots for all result folders in `results/MPD/viridiplantae_results/`. -->
+<!-- - **create_folders.py**: Organizes and groups result folders for viridiplantae into logical groups in `results/MPD/viridiplantae_group_results/` for comparative analysis. -->
+<!-- - **plot_groups.py**: Generates combined distribution and boxplot visualizations for each group in `results/MPD/viridiplantae_group_results/`, saving plots to `results/MPD/viridiplantae_group_plots/`. -->
 
-## Example Usage
+<!-- ## Example Usage -->
 
-### Batch MPD Calculation for Mammals
-```bash
-bash calcule_distance_in_tree/runs_mammals.sh
-```
-This will process all major simulation scenarios for mammals and save results and plots in `results/MPD/mammals_results/`.
+<!-- ### Batch MPD Calculation for Mammals -->
+<!-- ```bash -->
+<!-- bash calcule_distance_in_tree/runs_mammals.sh -->
+<!-- ``` -->
+<!-- This will process all major simulation scenarios for mammals and save results and plots in `results/MPD/mammals_results/`. -->
 
-### Batch MPD Calculation for Viridiplantae
-```bash
-bash calcule_distance_in_tree/runs_viridiplantae.sh
-```
-This will process all major simulation scenarios for viridiplantae and save results and plots in `results/MPD/viridiplantae_results/`.
+<!-- ### Batch MPD Calculation for Viridiplantae -->
+<!-- ```bash -->
+<!-- bash calcule_distance_in_tree/runs_viridiplantae.sh -->
+<!-- ``` -->
+<!-- This will process all major simulation scenarios for viridiplantae and save results and plots in `results/MPD/viridiplantae_results/`. -->
 
-### Quick MPD Calculation for Three Models (Viridiplantae)
-```bash
-bash calcule_distance_in_tree/runs_3_model.sh
-```
-This will process DSO78, JTT92, and LG08 models for viridiplantae.
+<!-- ### Quick MPD Calculation for Three Models (Viridiplantae) -->
+<!-- ```bash -->
+<!-- bash calcule_distance_in_tree/runs_3_model.sh -->
+<!-- ``` -->
+<!-- This will process DSO78, JTT92, and LG08 models for viridiplantae. -->
 
-### Batch Plotting for Mammals
-```bash
-bash calcule_distance_in_tree/plot_mammals.sh
-```
-This will generate summary plots for all mammals MPD results.
+<!-- ### Batch Plotting for Mammals -->
+<!-- ```bash -->
+<!-- bash calcule_distance_in_tree/plot_mammals.sh -->
+<!-- ``` -->
+<!-- This will generate summary plots for all mammals MPD results. -->
 
-### Batch Plotting for Viridiplantae
-```bash
-bash calcule_distance_in_tree/plot_viridiplantae.sh
-```
-This will generate summary plots for all viridiplantae MPD results.
+<!-- ### Batch Plotting for Viridiplantae -->
+<!-- ```bash -->
+<!-- bash calcule_distance_in_tree/plot_viridiplantae.sh -->
+<!-- ``` -->
+<!-- This will generate summary plots for all viridiplantae MPD results. -->
 
-### Organize and Group Viridiplantae Results
-```bash
-python scripts/MPD/create_folders.py
-```
-This will create grouped result folders in `results/MPD/viridiplantae_group_results/` for comparative analysis.
+<!-- ### Organize and Group Viridiplantae Results -->
+<!-- ```bash -->
+<!-- python scripts/MPD/create_folders.py -->
+<!-- ``` -->
+<!-- This will create grouped result folders in `results/MPD/viridiplantae_group_results/` for comparative analysis. -->
 
-### Plot Grouped Results for Viridiplantae
-```bash
-python scripts/MPD/plot_groups.py
-```
-This will generate combined distribution and boxplots for each group, saving them in `results/MPD/viridiplantae_group_plots/`.
+<!-- ### Plot Grouped Results for Viridiplantae -->
+<!-- ```bash -->
+<!-- python scripts/MPD/plot_groups.py -->
+<!-- ``` -->
+<!-- This will generate combined distribution and boxplots for each group, saving them in `results/MPD/viridiplantae_group_plots/`. -->
 
-## Notes
-- All scripts assume the standard project directory structure as described above.
-- Ensure all dependencies (Python packages, FastTree, etc.) are installed and available in your environment.
-- For large datasets, adjust the number of threads in the shell scripts for optimal performance.
+<!-- ## Notes -->
+<!-- - All scripts assume the standard project directory structure as described above. -->
+<!-- - Ensure all dependencies (Python packages, FastTree, etc.) are installed and available in your environment. -->
+<!-- - For large datasets, adjust the number of threads in the shell scripts for optimal performance. -->
 
 # Classifiers: 
 
@@ -492,6 +397,21 @@ The classifiers and related scripts are located in the `simulations-classifiers`
 
 After completing these steps, you will have a fully functional environment for running the classifiers and related scripts in the `simulations-classifiers` directory.
 
+## Running Classifiers
+
+To run the classifiers, follow these steps:
+
+1. **Prepare Configuration Files**
+
+- Configuration files are `.json` files, following `config_template.json` template.
+
+2. **Perform classifications**
+
+- Run the following command:
+   ```bash
+   uv run python src/classifiers/pipeline.py --config my_config.json 
+   ```
+   
 ## Running Classifiers on a Cluster
 
 To run the classifiers efficiently on a computing cluster, follow these steps:
@@ -521,27 +441,27 @@ To run the classifiers efficiently on a computing cluster, follow these steps:
 
 To make the results easier to interpret and visualize in plots, you can use the provided folder renaming scripts to standardize and clarify the names of result directories. This is especially useful when you have many simulation/model result folders with complex or inconsistent names.
 
-### Python Script: `rename_folders.py`
-- This script recursively traverses specified root directories and renames subfolders according to a set of rules, producing standardized, concise names (e.g., `WAG_F_P_E_0.1`, `WAG_EP_DATA2_R_0.05`).
-- The renaming rules are designed to reflect the model and simulation parameters in a consistent format, making it easier to group and compare results in downstream analyses and plots.
-- To use:
-  ```bash
-  python rename_folders.py
-  ```
-- The script will process all roots defined in the script (such as `runs_viridiplantae`, `runs_mammals`, etc.).
+<!-- ### Python Script: `rename_folders.py` -->
+<!-- - This script recursively traverses specified root directories and renames subfolders according to a set of rules, producing standardized, concise names (e.g., `WAG_F_P_E_0.1`, `WAG_EP_DATA2_R_0.05`). -->
+<!-- - The renaming rules are designed to reflect the model and simulation parameters in a consistent format, making it easier to group and compare results in downstream analyses and plots. -->
+<!-- - To use: -->
+<!--   ```bash -->
+<!--   python rename_folders.py -->
+<!--   ``` -->
+<!-- - The script will process all roots defined in the script (such as `runs_viridiplantae`, `runs_mammals`, etc.). -->
 
-### Bash Script: `rename_folders.sh`
-- This shell script provides a template for renaming folders in `runs_viridiplantae` according to common patterns, especially for WAG model variants.
-- It uses pattern matching and string manipulation to rename folders to the standardized format used in plotting scripts.
-- To use:
-  ```bash
-  bash rename_folders.sh
-  ```
-- You can modify or extend this script to match your specific folder naming patterns.
+<!-- ### Bash Script: `rename_folders.sh` -->
+<!-- - This shell script provides a template for renaming folders in `runs_viridiplantae` according to common patterns, especially for WAG model variants. -->
+<!-- - It uses pattern matching and string manipulation to rename folders to the standardized format used in plotting scripts. -->
+<!-- - To use: -->
+<!--   ```bash -->
+<!--   bash rename_folders.sh -->
+<!--   ``` -->
+<!-- - You can modify or extend this script to match your specific folder naming patterns. -->
 
-**Why Rename?**
-- Standardized folder names make it much easier to select, group, and display results in summary plots.
-- The plotting scripts expect or benefit from these concise, consistent names for grouping and labeling.
+<!-- **Why Rename?** -->
+<!-- - Standardized folder names make it much easier to select, group, and display results in summary plots. -->
+<!-- - The plotting scripts expect or benefit from these concise, consistent names for grouping and labeling. -->
 
 ## Visualization Scripts
 
@@ -636,7 +556,7 @@ Below is a concise summary of the main steps to run the full pipeline, from raw 
 3. **Preprocess Alignments**
    - Remove outliers, gaps, and ambiguous sites:
      ```bash
-     python3 scripts/preprocessing_dataset.py --input <filtered_dir> --output <preprocess_dir> --minseq 5 --maxsites 10000 --minsites 10 --type aa
+     python3 scripts/preprocessing_dataset.py --input <filtered_dir> --output <preprocess_dir> --minseq 5 --maxsites 10000 --minsites 10 --alphabet aa
      ```
 
 4. **Infer Phylogenetic Trees**
@@ -658,11 +578,13 @@ Below is a concise summary of the main steps to run the full pipeline, from raw 
 6. **Run Simulations**
    - Simulate alignments using the Bppsimulator:
      ```bash
-     python3 scripts/simulation.py --simulator BPP --align <preprocess_dir>/gap_and_ambigless --tree <tree_dir> --output <sim_output_dir> --tools <path_to_tools> --config <config_file>
+     python3 scripts/simulation.py --align <preprocess_dir> --tree <tree_dir> --output <sim_output_dir> --tools <path_to_tools> --config <config_file>
      ```
 
 7. **Run Classifiers**
    - Train and evaluate classifiers on simulated data (see `simulations-classifiers/README.md` for details).
+
+python3 src/classifiers/pipeline.py --config config_20250913-091846.json
 
 8. **Calculate MPD (Mean Phylogenetic Distance)**
    - Compare simulated and empirical data:

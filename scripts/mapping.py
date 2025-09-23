@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     for alignment in tqdm(os.listdir(align_path), desc="Mapping alignment", unit="alignment") :
         famname = alignment.split('.')[0]
-        treename = famname + '_tree.nwk'
+        treename = famname + '.nwk'
         align = align_path / alignment
         tree = tree_path / treename
 

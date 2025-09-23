@@ -442,14 +442,14 @@ def main():
     parser.add_argument('--threads', type=int, default=4, help='Number of parallel processes (default: 4)')
     args = parser.parse_args()
 
-    try:
+    if True:#try:
         # Ensure output directory exists
         output_dir = os.path.abspath(args.output)
         os.makedirs(output_dir, exist_ok=True)
         logging.info(f"Output directory: {output_dir}")
 
         results_data = {}
-
+        
         for sim_dir in args.simulation:
             simulation_type = os.path.basename(sim_dir.rstrip('/'))
             create_directories(simulation_type, output_dir)
@@ -464,22 +464,18 @@ def main():
                 logging.error(f"Simulation directory does not exist: {simulation_dir}")
                 continue
                 
-            empirical_files = sorted(os.listdir(empirical_dir))
-            simulation_files = sorted(os.listdir(simulation_dir))
-            
-            if len(empirical_files) != len(simulation_files):
-                logging.warning(f"Number of files mismatch in {simulation_type}: empirical={len(empirical_files)}, simulation={len(simulation_files)}")
-                continue
-                
+            empirical_files = sorted([x for x in os.listdir(empirical_dir) if os.path.isfile(os.path.join(empirical_dir,x))])
+            simulation_files = sorted([x for x in os.listdir(simulation_dir) if os.path.isfile(os.path.join(simulation_dir,x)) if x in empirical_files])
+
+            empirical_files = [x for x in empirical_files if x in simulation_files]
+
+            ### zip files if similar prefix
             file_args = []
             for emp_file, sim_file in zip(empirical_files, simulation_files):
-                if emp_file != sim_file:
-                    logging.warning(f"File name mismatch: {emp_file} != {sim_file}")
-                    continue
                 emp_path = os.path.join(empirical_dir, emp_file)
                 sim_path = os.path.join(simulation_dir, sim_file)
                 file_args.append((emp_path, sim_path, simulation_type, output_dir))
-                
+
             results_data[simulation_type] = []
             
             # Create a progress bar with a clearer format
@@ -506,7 +502,7 @@ def main():
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             results_file = os.path.join(results_dir, f'distance_results_{timestamp}.csv')
             
-            try:
+            if True:#try:
                 with open(results_file, 'w', newline='') as csvfile:
                     fieldnames = ['File', 'Simulation_Type', 'Average_Distance']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -525,8 +521,8 @@ def main():
                             'Average_Distance': f"{overall_avg:.4f}"
                         })
                 logging.info(f"Results saved to: {results_file}")
-            except Exception as e:
-                logging.error(f"Error saving results to CSV: {str(e)}")
+            # except Exception as e:
+            #     logging.error(f"Error saving results to CSV: {str(e)}")
 
             # Generate plots
             if args.plot:
@@ -536,9 +532,9 @@ def main():
                 except Exception as e:
                     logging.error(f"Error generating plot: {str(e)}")
 
-    except Exception as e:
-        logging.error(f"An error occurred in main: {str(e)}")
-        sys.exit(1)
+    # except Exception as e:
+    #     logging.error(f"An error occurred in main: {str(e)}")
+    #     sys.exit(1)
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == 'plot_dist':
