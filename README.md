@@ -26,7 +26,7 @@ tar -xzf data/prot_viridiplantae.tgz
 This project relies on the Bio++ suite of libraries and simulators. To ensure compatibility and flexibility, we recommend installing the development version of Bio++ from source, as described in the [official Bio++ installation guide](https://github.com/BioPP/bpp-documentation/wiki/Installation).
 
 
-<!-- # Dataset Filtering -->
+# Dataset Filtering 
 
 <!-- **Note:** This part is to be updated for more general data (ie not -->
 <!-- with the fam2nbseqnbspec file). -->
@@ -35,10 +35,12 @@ This project relies on the Bio++ suite of libraries and simulators. To ensure co
 <!-- `gap_and_ambigless/` subdirectory, as these have had both gaps and -->
 <!-- ambiguous sites removed, ensuring the highest data quality. -->
 
-<!-- For this project, we require MSA (Multiple Sequence Alignment) protein -->
-<!-- family files that contain more than two species and more than two -->
-<!-- sequences per family. The information about the number of sequences -->
-<!-- and species for each family is provided in the corresponding -->
+ For this project, we require MSA (Multiple Sequence Alignment) protein 
+ family files that contain more than two species and more than two 
+ sequences per family. 
+
+<!-- The information about the number of sequences  -->
+<!--  and species for each family is provided in the corresponding -->
 <!-- `fam2nbseqnbspec.mono` file within each dataset folder. -->
 
 <!-- To filter and select only the families that satisfy these conditions, -->
@@ -64,28 +66,28 @@ This project relies on the Bio++ suite of libraries and simulators. To ensure co
 <!-- Only the MSA files for families with more than two species and more -->
 <!-- than two sequences will be copied to the target directory. -->
 
-<!-- # Dataset Preprocessing -->
+# Dataset Preprocessing 
 
-<!-- After filtering the MSA protein family files, we preprocess the datasets to remove outliers, gaps, and ambiguous sites. This is done using the `scripts/preprocess.py`. -->
+The `scripts/preprocess.py` can be used to  remove outliers, gaps, and ambiguous sites. 
 
-<!-- ### Usage Example -->
+### Usage Example 
 
-<!-- ```bash -->
-<!-- python3 scripts/preprocess.py \ -->
-<!--   --input data/prot_mammals_mono \ -->
-<!--   --output data/prot_mammals_clean \ -->
-<!--   --minseq 5 \ -->
-<!--   --maxsites 10000 \ -->
-<!--   --minsites 50 \ -->
-<!--   --alphabet aa -->
-<!-- ``` -->
+```bash 
+python3 scripts/preprocess.py \ 
+  --input data/prot_mammals_mono \ 
+  --output data/prot_mammals_clean \ 
+  --minseq 5 \ 
+  --maxsites 10000 \ 
+  --minsites 50 \ 
+  --alphabet aa 
+``` 
 
-<!-- - `--input`: Directory containing the filtered MSA files (e.g., `data/mammals_new`). -->
-<!-- - `--output`: Directory where the preprocessing results will be saved (e.g., `results/preprocess_mammals_new`). -->
-<!-- - `--minseq`: Minimum number of sequences required to keep an alignment. -->
-<!-- - `--maxsites`: Maximum number of sites (columns) allowed in an alignment. -->
-<!-- - `--minsites`: Minimum number of sites (columns) required in an alignment. -->
-<!-- - `--alphabet`: Sequence alphabet, either `aa` (amino acid) or `dna`. -->
+- `--input`: Directory containing the filtered MSA files (e.g., `data/mammals_new`). 
+- `--output`: Directory where the preprocessing results will be saved (e.g., `results/preprocess_mammals_new`). 
+- `--minseq`: Minimum number of sequences required to keep an alignment. 
+- `--maxsites`: Maximum number of sites (columns) allowed in an alignment. 
+- `--minsites`: Minimum number of sites (columns) required in an alignment. 
+- `--alphabet`: Sequence alphabet, either `aa` (amino acid) or `dna`. 
 
 <!-- ### Output Directory Structure -->
 
@@ -123,7 +125,7 @@ python3 scripts/compute_tree.py \
   --alphabet aa
 ```
 
-- `--input`: Directory containing the preprocessed alignments (recommended: `gap_and_ambigless` subfolder).
+- `--input`: Directory containing the preprocessed alignments.
 - `--output`: Directory where the inferred phylogenetic trees will be saved.
 - `--alphabet`: Sequence alphabet, `aa` for amino acids or `nt` for nucleotides.
 - `--only`: (Optional) Path to a file listing specific alignment filenames to process (one per line).
@@ -437,9 +439,9 @@ To run the classifiers efficiently on a computing cluster, follow these steps:
 - Make sure the `logs/` directory exists for output and error logs, or create it with `mkdir -p logs`.
 - Adjust resource parameters in `slurm_job_array.slurm` as needed for your cluster environment.
 
-## Renaming Result Folders for Clearer Plots
+<!-- ## Renaming Result Folders for Clearer Plots -->
 
-To make the results easier to interpret and visualize in plots, you can use the provided folder renaming scripts to standardize and clarify the names of result directories. This is especially useful when you have many simulation/model result folders with complex or inconsistent names.
+<!-- To make the results easier to interpret and visualize in plots, you can use the provided folder renaming scripts to standardize and clarify the names of result directories. This is especially useful when you have many simulation/model result folders with complex or inconsistent names. -->
 
 <!-- ### Python Script: `rename_folders.py` -->
 <!-- - This script recursively traverses specified root directories and renames subfolders according to a set of rules, producing standardized, concise names (e.g., `WAG_F_P_E_0.1`, `WAG_EP_DATA2_R_0.05`). -->
@@ -471,138 +473,139 @@ After running and (optionally) renaming your result folders, you can use the pro
 - **Script:** `simulations-classifiers/visualize_confusion_matrix.py`
 - **Purpose:** Generates confusion matrix plots for different simulation groups and classifiers.
 - **Usage:**
-  ```bash
-  python simulations-classifiers/visualize_confusion_matrix.py --runs_path runs_viridiplantae
-  ```
-- The output will be saved in `results/simulations-classifiers/visualization/confusion_matrix/`.
 
-### 2. Heatmap Visualization
-- **Script:** `simulations-classifiers/visualize_heatmap.py`
-- **Purpose:** Creates heatmaps of accuracy and F1 score for WAG model variants across classifiers.
-- **Usage:**
-  ```bash
-  python simulations-classifiers/visualize_heatmap.py
-  ```
-- The output will be saved in `results/simulations-classifiers/visualization/wag_heatmaps/`.
+```bash
+python3 simulations-classifiers/visualize_confusion_matrix.py --classif=results/Classif/mammals/ --output=results/Classif/mammals
+```
+
+- `--classif`: Directory containing all classifiers outputs
+- `--output`: Output directory for confusion matrices plotsMPD results and plots.
+
+
+<!-- ### 2. Heatmap Visualization -->
+<!-- - **Script:** `simulations-classifiers/visualize_heatmap.py` -->
+<!-- - **Purpose:** Creates heatmaps of accuracy and F1 score for WAG model variants across classifiers. -->
+<!-- - **Usage:** -->
+<!--   ```bash -->
+<!-- python3 simulations-classifiers/visualize_confusion_matrix.py --classif=results/Classif/mammals/ --output=results/Classif/mammals -->
+<!--   ``` -->
+<!-- - `--classif`: Directory containing all classifiers outputs -->
+<!-- - `--output`: Output directory for confusion matrices plotsMPD results and plots. -->
 
 ### 3. Training/Validation Curve Visualization
 - **Script:** `simulations-classifiers/visualize_train_valid.py`
-- **Purpose:** Plots training and validation loss, accuracy, and F1 score curves for all classifiers and simulation types.
+- **Purpose:** Plots training and validation loss, accuracy, and F1 score curves for all classifiers.
 - **Usage:**
   ```bash
-  python simulations-classifiers/visualize_train_valid.py
+python3 simulations-classifiers/visualize_train_valid.py --classif=results/Classif/mammals/ --output=results/Classif/mammals
   ```
-- The output will be saved in `results/simulations-classifiers/visualization/train_valid_plot/`.
+- `--classif`: Directory containing all classifiers outputs
+- `--output`: Output directory for training curves
 
-**Note:**
-- Make sure your result folders (e.g., `runs_viridiplantae`) are named according to the conventions described above for best results in the plots.
-- You can modify the scripts to point to other result directories as needed.
-- All visualization outputs are collected under `results/simulations-classifiers/visualization/` for easy access and organization.
+<!-- # Bidimensional Visualization Web App -->
 
-# Bidimensional Visualization Web App
+<!-- This project provides an interactive web application for visualizing the relationship between phylogenetic distance and classifier accuracy across different simulation scenarios and groups. This visualization helps you compare the performance of different classifiers and simulation settings in a two-dimensional (2D) space. -->
 
-This project provides an interactive web application for visualizing the relationship between phylogenetic distance and classifier accuracy across different simulation scenarios and groups. This visualization helps you compare the performance of different classifiers and simulation settings in a two-dimensional (2D) space.
+<!-- ## Folder Name Standardization -->
 
-## Folder Name Standardization
+<!-- Before using the visualization, it is recommended to standardize the names of your result folders for clarity and consistency. Use the provided `plots_two_dimension/rename_folders.py` script: -->
 
-Before using the visualization, it is recommended to standardize the names of your result folders for clarity and consistency. Use the provided `plots_two_dimension/rename_folders.py` script:
+<!-- ```bash -->
+<!-- python plots_two_dimension/rename_folders.py -->
+<!-- ``` -->
+<!-- This script will recursively rename folders in your results directory (e.g., `results/MPD/viridiplantae_group_results`) to a concise and consistent format, making it easier to group and display results in the visualization. -->
 
-```bash
-python plots_two_dimension/rename_folders.py
-```
-This script will recursively rename folders in your results directory (e.g., `results/MPD/viridiplantae_group_results`) to a concise and consistent format, making it easier to group and display results in the visualization.
+<!-- ## Launching the Visualization -->
 
-## Launching the Visualization
+<!-- The main visualization app is implemented in `plots_two_dimension/app.py` using Dash and Plotly. It reads the processed and renamed results and allows you to interactively explore the data in your web browser. -->
 
-The main visualization app is implemented in `plots_two_dimension/app.py` using Dash and Plotly. It reads the processed and renamed results and allows you to interactively explore the data in your web browser.
+<!-- ### Data Paths Used -->
+<!-- - **Group results:** `results/MPD/viridiplantae_group_results` (after renaming) -->
+<!-- - **Classifier results:** `results/simulations-classifiers/runs_viridiplantae` -->
 
-### Data Paths Used
-- **Group results:** `results/MPD/viridiplantae_group_results` (after renaming)
-- **Classifier results:** `results/simulations-classifiers/runs_viridiplantae`
+<!-- ### How to Run -->
+<!-- 1. Make sure you have installed the required Python packages (see `plots_two_dimension/requirements.txt`). -->
+<!-- 2. Standardize your folder names using `rename_folders.py` as described above. -->
+<!-- 3. Launch the web app: -->
+<!--    ```bash -->
+<!--    python plots_two_dimension/app.py -->
+<!--    ``` -->
+<!-- 4. Open your browser and go to `http://127.0.0.1:8050/` to interact with the visualization. -->
 
-### How to Run
-1. Make sure you have installed the required Python packages (see `plots_two_dimension/requirements.txt`).
-2. Standardize your folder names using `rename_folders.py` as described above.
-3. Launch the web app:
-   ```bash
-   python plots_two_dimension/app.py
-   ```
-4. Open your browser and go to `http://127.0.0.1:8050/` to interact with the visualization.
+<!-- ### Features -->
+<!-- - Select groups, classifiers, and subgroups (with/without data2) to display. -->
+<!-- - Each point represents a simulation scenario and classifier, with: -->
+<!--   - **Marker shape** for group -->
+<!--   - **Marker color** for classifier -->
+<!--   - **Marker size** for simulation suffix (e.g., E_0, E_0.05, R_0, etc.) -->
+<!-- - Optionally connect points by lines in order of simulation suffix. -->
+<!-- - Hover to see detailed labels for each point. -->
 
-### Features
-- Select groups, classifiers, and subgroups (with/without data2) to display.
-- Each point represents a simulation scenario and classifier, with:
-  - **Marker shape** for group
-  - **Marker color** for classifier
-  - **Marker size** for simulation suffix (e.g., E_0, E_0.05, R_0, etc.)
-- Optionally connect points by lines in order of simulation suffix.
-- Hover to see detailed labels for each point.
+<!-- This tool provides a powerful way to visually compare the effects of different simulation parameters and classifier choices on phylogenetic distance and classification accuracy. -->
 
-This tool provides a powerful way to visually compare the effects of different simulation parameters and classifier choices on phylogenetic distance and classification accuracy.
+<!-- # Pipeline Summary: Step-by-Step Workflow -->
 
-# Pipeline Summary: Step-by-Step Workflow
+<!-- Below is a concise summary of the main steps to run the full pipeline, from raw data to bidimensional visualization. Each step lists the key script or command to use. -->
 
-Below is a concise summary of the main steps to run the full pipeline, from raw data to bidimensional visualization. Each step lists the key script or command to use.
+<!-- 1. **Prepare Raw Data** -->
+<!--    - Place your original MSA protein family files and metadata (e.g., fam2nbseqnbspec.mono) in the appropriate directory (e.g., `Original_Data/mammals/` or `Original_Data/viridiplantae/`). -->
 
-1. **Prepare Raw Data**
-   - Place your original MSA protein family files and metadata (e.g., fam2nbseqnbspec.mono) in the appropriate directory (e.g., `Original_Data/mammals/` or `Original_Data/viridiplantae/`).
+<!-- 2. **Filter Families** -->
+<!--    - Select families with more than two species and more than two sequences: -->
+<!--      ```bash -->
+<!--      python3 scripts/filter_mono.py --source-dir <input_dir> --fam-file <fam2nbseqnbspec.mono> --target-dir <filtered_dir> -->
+<!--      ``` -->
 
-2. **Filter Families**
-   - Select families with more than two species and more than two sequences:
-     ```bash
-     python3 scripts/filter_mono.py --source-dir <input_dir> --fam-file <fam2nbseqnbspec.mono> --target-dir <filtered_dir>
-     ```
+<!-- 3. **Preprocess Alignments** -->
+<!--    - Remove outliers, gaps, and ambiguous sites: -->
+<!--      ```bash -->
+<!--      python3 scripts/preprocessing_dataset.py --input <filtered_dir> --output <preprocess_dir> --minseq 5 --maxsites 10000 --minsites 10 --alphabet aa -->
+<!--      ``` -->
 
-3. **Preprocess Alignments**
-   - Remove outliers, gaps, and ambiguous sites:
-     ```bash
-     python3 scripts/preprocessing_dataset.py --input <filtered_dir> --output <preprocess_dir> --minseq 5 --maxsites 10000 --minsites 10 --alphabet aa
-     ```
+<!-- 4. **Infer Phylogenetic Trees** -->
+<!--    - Build trees for each alignment: -->
+<!--      ```bash -->
+<!--      python3 scripts/compute_tree.py --input <preprocess_dir>/gap_and_ambigless --output <tree_dir> --alphabet aa -->
+<!--      ``` -->
 
-4. **Infer Phylogenetic Trees**
-   - Build trees for each alignment:
-     ```bash
-     python3 scripts/compute_tree.py --input <preprocess_dir>/gap_and_ambigless --output <tree_dir> --alphabet aa
-     ```
+<!-- 5. **Write Simulation Configuration File** -->
+<!--    - Prepare a config file for each simulation scenario (see `config/bpp/aa/classic/DSO78_frequencies.bpp` for an example). -->
+<!--    - If you want to run simulations on a cluster, you can generate all simulation commands and a SLURM job array script automatically: -->
+<!--      ```bash -->
+<!--      cd simulations-classifiers -->
+<!--      bash generate_command.sh -->
+<!--      sbatch slurm_job_array.slurm -->
+<!--      ``` -->
+<!--    - This will scan your config directory, create all necessary commands, and submit them as a job array to your cluster's scheduler. Adjust resource parameters in the SLURM script as needed for your environment. -->
 
-5. **Write Simulation Configuration File**
-   - Prepare a config file for each simulation scenario (see `config/bpp/aa/classic/DSO78_frequencies.bpp` for an example).
-   - If you want to run simulations on a cluster, you can generate all simulation commands and a SLURM job array script automatically:
-     ```bash
-     cd simulations-classifiers
-     bash generate_command.sh
-     sbatch slurm_job_array.slurm
-     ```
-   - This will scan your config directory, create all necessary commands, and submit them as a job array to your cluster's scheduler. Adjust resource parameters in the SLURM script as needed for your environment.
+<!-- 6. **Run Simulations** -->
+<!--    - Simulate alignments using the Bppsimulator: -->
+<!--      ```bash -->
+<!--      python3 scripts/simulation.py --align <preprocess_dir> --tree <tree_dir> --output <sim_output_dir> --tools <path_to_tools> --config <config_file> -->
+<!--      ``` -->
 
-6. **Run Simulations**
-   - Simulate alignments using the Bppsimulator:
-     ```bash
-     python3 scripts/simulation.py --align <preprocess_dir> --tree <tree_dir> --output <sim_output_dir> --tools <path_to_tools> --config <config_file>
-     ```
+<!-- 7. **Run Classifiers** -->
+<!--    - Train and evaluate classifiers on simulated data (see `simulations-classifiers/README.md` for details). -->
 
-7. **Run Classifiers**
-   - Train and evaluate classifiers on simulated data (see `simulations-classifiers/README.md` for details).
+<!-- python3 src/classifiers/pipeline.py --config config_20250913-091846.json -->
 
-python3 src/classifiers/pipeline.py --config config_20250913-091846.json
+<!-- 8. **Calculate MPD (Mean Phylogenetic Distance)** -->
+<!--    - Compare simulated and empirical data: -->
+<!--      ```bash -->
+<!--      python3 scripts/MPD/process_alignments.py --empirical <preprocess_dir>/gap_and_ambigless --simulation <sim_output_dir> --output <mpd_output_dir> --plot -->
+<!--      ``` -->
 
-8. **Calculate MPD (Mean Phylogenetic Distance)**
-   - Compare simulated and empirical data:
-     ```bash
-     python3 scripts/MPD/process_alignments.py --empirical <preprocess_dir>/gap_and_ambigless --simulation <sim_output_dir> --output <mpd_output_dir> --plot
-     ```
+<!-- 9. **Organize and Rename Result Folders** -->
+<!--    - Standardize result folder names for visualization: -->
+<!--      ```bash -->
+<!--      python plots_two_dimension/rename_folders.py -->
+<!--      ``` -->
 
-9. **Organize and Rename Result Folders**
-   - Standardize result folder names for visualization:
-     ```bash
-     python plots_two_dimension/rename_folders.py
-     ```
+<!-- 10. **Launch the Bidimensional Visualization Web App** -->
+<!--     - Explore results interactively in your browser: -->
+<!--       ```bash -->
+<!--       python plots_two_dimension/app.py -->
+<!--       # Then open http://127.0.0.1:8050/ in your browser -->
+<!--       ``` -->
 
-10. **Launch the Bidimensional Visualization Web App**
-    - Explore results interactively in your browser:
-      ```bash
-      python plots_two_dimension/app.py
-      # Then open http://127.0.0.1:8050/ in your browser
-      ```
-
-This pipeline allows you to go from raw data to interactive, publication-ready visualizations step by step. Adjust parameters and paths as needed for your specific datasets and analysis goals.
+<!-- This pipeline allows you to go from raw data to interactive, publication-ready visualizations step by step. Adjust parameters and paths as needed for your specific datasets and analysis goals. -->

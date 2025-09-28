@@ -60,8 +60,8 @@ def get_metric_value(base_dir, simulation_type, classifier_type, metric='accurac
         print(f"Warning: Error processing {summary_path}: {str(e)}")
         return None
 
-def create_combined_wag_heatmap(data, simulation_types, classifier_types, title, output_path):
-    """Create a combined heatmap for WAG simulations"""
+def plot_heatmaps(classif_dir, output_dir):
+    """Create a combined heatmap for several classifiers"""
     # Convert to DataFrame
     df = pd.DataFrame(data, 
                      index=simulation_types,
@@ -148,6 +148,17 @@ def create_combined_wag_heatmaps(base_dir):
                 f'combined_wag_{metric.lower()}_heatmap.png'
             )
 
+def main():
+    parser = argparse.ArgumentParser(description='Generate heatmaps matrices for different classifiers')
+    parser.add_argument('--classif', type=str, default="",
+                      help='Path to the classifiers output directory')
+    parser.add_argument('--output', type=str, default="",
+                      help='Path to the heatmap plot directory')
+    args = parser.parse_args()
+    
+    # Create confusion matrices
+    plot_heatmaps(args.classif, args.output)
+
 if __name__ == "__main__":
-    base_dir = "runs_viridiplantae"
-    create_combined_wag_heatmaps(base_dir)
+    main()
+
