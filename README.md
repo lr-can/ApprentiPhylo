@@ -496,9 +496,9 @@ python3 simulations-classifiers/visualize_confusion_matrix.py --classif=results/
 - **Script:** `simulations-classifiers/visualize_train_valid.py`
 - **Purpose:** Plots training and validation loss, accuracy, and F1 score curves for all classifiers.
 - **Usage:**
-  ```bash
+```bash
 python3 simulations-classifiers/visualize_train_valid.py --classif=results/Classif/mammals/ --output=results/Classif/mammals
-  ```
+```
 - `--classif`: Directory containing all classifiers outputs
 - `--output`: Output directory for training curves
 
