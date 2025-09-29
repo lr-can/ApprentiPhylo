@@ -64,12 +64,13 @@ class ESMsimulator() :
             print("Done")
        
 class Bppsimulator():
-    def __init__(self, align, tree, config, output):#, ext_length=None, root_length=None, gaps=False, mapping=None):
-        self.align_dir = Path(align) 
-        self.tree_dir = Path(tree)
+    def __init__(self, args, config):#, ext_length=None, root_length=None, gaps=False, mapping=None):
+        self.align_dir = Path(args.align) 
+        self.tree_dir = Path(args.tree)
         self.config = Path(config)
-        self.output_dir = Path(output)
+        self.output_dir = Path(args.output)
 
+        self.args = args # for other parameters
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         with open(self.config, 'r') as f:
@@ -118,29 +119,28 @@ class Bppsimulator():
         for file in os.listdir(self.tree):
             self.change_external_length(file)
 
-    def pick_data2(self, data1_path):
-        # Select a second alignment file (data2) that is longer than data1, if available
-        data1_dir = data1_path.parent
-        data1_len = len(next(SeqIO.parse(data1_path, "fasta")).seq)
+    def pick_longer_alignment(self, align, rep):
+        """ Pick a random an alignment longer than align file in directory rep.
+        """
+        data1_len = len(next(SeqIO.parse(align, "fasta")).seq)
         candidates = []
-        for fname in os.listdir(data1_dir):
-            if fname.endswith('.fasta') and fname != data1_path.name:
-                fpath = data1_dir / fname
-                if len(next(SeqIO.parse(fpath, "fasta")).seq) > data1_len:
-                    candidates.append(fpath)
-        return random.choice(candidates) if candidates else data1_path
+        for fname in os.listdir(rep):
+          fpath=os.path.join(rep,fname)
+          if os.path.isfile(fpath) and fname.endswith('.fasta') and len(next(SeqIO.parse(fpath, "fasta")).seq) >= data1_len:
+            candidates.append(fpath)
+        return random.choice(candidates) if candidates else align
 
     def simulate(self):
         align_names = os.listdir(self.align_dir)
         for align_name in align_names:
           align_path = os.path.join(self.align_dir,align_name)
-          if not os.path.isfile(align_path):
+          if not os.path.isfile(align_path) or not align_name.endswith('.fasta'):
             continue
 
           ## general macros
           dargs={}
           dargs["IN_SEQ"]=align_path
-
+          
           # Choose the matching tree path 
           famname = align_name.split('.')[0]
           dargs["TREE"]= os.path.join(self.tree_dir,f"{famname}.nwk")
@@ -157,6 +157,12 @@ class Bppsimulator():
             first_seq = lseq[0]
             nseq = len(first_seq)
             dargs["NSEQ"]=nseq
+            
+          if "IN_SEQ2" in self.lmacros:
+            dargs["IN_SEQ2"]=self.pick_longer_alignment(align_path,self.align_dir)
+
+          if "EXT_RATE" in self.lmacros:
+            dargs["EXT_RATE"]=self.args.ext_rate
             
           command = ["bppseqgen", f"param={self.config}"] + [k+"="+str(v) for k,v in dargs.items()]
           try:
@@ -178,22 +184,20 @@ class Bppsimulator():
 if __name__ == "__main__":
    #arguments
    parser = argparse.ArgumentParser()
-   parser.add_argument('--simulator', '-s', nargs= '+', help = "List of simulators to be used ('ESM' or 'BPP')")
-   parser.add_argument('--output', '-o', help = 'Output directory for simulated alignments.')
-   parser.add_argument('--tree', '-t', help = "path to directory containing phylogenetic trees.")
-   parser.add_argument('--external_branch_length', '-e', help = "(optional for BPP) length of external branches to be applied")
-   parser.add_argument('--root_length', '-r', help = "(optional for BPP) length of root branch to be applied")
    parser.add_argument('--align', '-a', help = "directory containing alignments to be used as references.")
-   parser.add_argument('--tools', help = "path to necessary tools, such as ESM scripts of Apptainer files (.cif).")
-   parser.add_argument('--config', '-c', nargs='+', help = "(optional for BPP) list of configuration files for BPP simulations.")
-   parser.add_argument('--modelmapping', '-m', help = "(optional for BPP): path to the directory containing the evolution models to be applied")
-   parser.add_argument('--gap', default=False, type=bool, help = "Option to add gaps to simulated alignments (False or True).")
+   parser.add_argument('--tree', '-t', help = "path to directory containing phylogenetic trees.")
+   parser.add_argument('--config', '-c', nargs='+', help = "list of configuration files for BPP simulation to be applied")
+   parser.add_argument('--output', '-o', help = 'Output directory for simulated alignments.')
+#   parser.add_argument('--simulator', '-s', nargs= '+', help = "List of simulators to be used ('ESM' or 'BPP')")
+   parser.add_argument('--ext_rate', '-e', help = "(option for BPP) rate of external branches to be applied")
+   # parser.add_argument('--root_length', '-r', help = "(optional for BPP) length of root branch to be applied")
+   # parser.add_argument('--tools', help = "path to necessary tools, such as ESM scripts of Apptainer files (.cif).")
+   # parser.add_argument('--modelmapping', '-m', help = "(optional for BPP): path to the directory containing the evolution model")
+   # parser.add_argument('--gap', default=False, type=bool, help = "Option to add gaps to simulated alignments (False or True).")
    args = parser.parse_args()
    
    for config in args.config :
-     BPPsimul = Bppsimulator(align = args.align, 
-                             tree = args.tree,
-                             config = config, 
-                             output = args.output
+     BPPsimul = Bppsimulator(args, 
+                             config = config                      
                              )
      BPPsimul.simulate()

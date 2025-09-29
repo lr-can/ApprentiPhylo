@@ -155,8 +155,9 @@ various evolutionary models using the Bio++ suite.
 #### Key Arguments
 - `--align`: Directory containing reference alignments.
 - `--tree`: Directory containing phylogenetic trees.
-- `--output`: Output directory for simulated alignments.
 - `--config`: One or more BPP configuration files specifying simulation parameters.
+- `--output`: Output directory for simulated alignments.
+- `--ext_rate`: rate of model on external branches 
 
 #### Example
 ```bash
@@ -170,6 +171,7 @@ python3 scripts/simulation.py \
 This will generate simulated alignments using bppseqgen, with the
 specified evolutionary model in config files. The output will be saved
 in the specified directory for downstream analysis.
+
 
 ## Step 0: Write the Configuration File for Simulation
 
@@ -191,8 +193,8 @@ input.tree1=user(file=$(TREE),format=Newick)
 
 root_freq1 = Fixed(init=observed, data=1)
 
-# Model of evolution: Jukes-Cantor 1969 (JC69)
-model1 = DSO78+F(frequencies=Fixed(init=observed, data=1))
+# Model of evolution: 
+model1 = WAG01+F(frequencies=Fixed(init=observed, data=1))
 
 #rate distribution
 rate_distribution1 = Constant()
@@ -210,6 +212,19 @@ simul1 = simul(process=1, output.sequence.file = $(OUTPUT_DIR), output.sequence.
 - `model1`: Sets the evolutionary model (here, DSO78 with observed frequencies).
 - `process1`: Sets the evolutionary process used (model, tree, root frequencies, rate distribution).
 - `simul1`: Defines the simulation process and output format.
+
+
+Macros $(...) are used to be configured through command line options.
+They are directly used as such in bppseqgen, and are linked to
+specific arguments of `simulation.py` script:
+
+- `--align`: $(IN_SEQ)
+- `--tree`: $(TREE) 
+- `--output`: $(OUT_SEQ)
+- `--ext_rate`: $(EXT_RATE)
+
+Additional macro $(IN_SEQ2) is used to look for an additional
+alignment. See examples in directory `config/bpp/aa`.
 
 <!-- ### Model Suffixes and Their Meanings -->
 <!-- - **_frequencies** or **_F**: Use the observed amino acid frequencies from the MSA (multiple sequence alignment) to generate the root sequence, replacing the default frequencies in the model. -->
