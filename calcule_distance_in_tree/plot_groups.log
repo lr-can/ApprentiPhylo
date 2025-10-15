@@ -1,0 +1,488 @@
+2025-05-28 11:08:33,997 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:08:35,855 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:08:36,461 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:08:37,879 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:08:38,510 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:08:38,512 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:08:39,897 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:08:40,664 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:08:40,666 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:08:42,013 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:08:42,439 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:08:43,642 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:08:44,266 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:08:44,267 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:08:45,852 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:08:46,365 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:08:47,995 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:08:48,678 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:11:33,933 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:11:34,878 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:11:35,393 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:11:36,845 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:11:37,320 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:11:39,634 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:11:40,251 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:11:40,254 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:11:41,407 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:11:41,895 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:11:43,042 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:11:43,459 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:11:43,459 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:11:44,439 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:11:44,756 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:11:45,510 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:11:45,937 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:11:47,412 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:11:47,908 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:11:47,910 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:11:49,093 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:11:49,592 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:11:50,840 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:11:51,205 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:11:53,025 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:11:53,627 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:17:06,798 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:17:07,545 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:17:07,873 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:17:08,567 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:17:08,849 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:17:10,276 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:17:10,733 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:17:10,734 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:17:11,286 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:17:11,540 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:17:12,122 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:17:12,398 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:17:12,398 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:17:13,020 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:18:26,811 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:18:27,590 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:18:27,898 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:18:28,574 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:18:28,864 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:18:30,268 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:18:30,705 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:18:30,706 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:18:31,247 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:18:31,512 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:18:32,118 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:18:32,374 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:18:32,375 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:18:32,960 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:18:33,209 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:18:33,676 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:18:33,923 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:18:34,997 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:18:35,384 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:18:35,386 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:18:36,146 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:18:36,443 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:18:37,182 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:18:37,469 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:18:38,960 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:18:39,436 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:21:13,869 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:21:14,666 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:21:14,958 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:21:15,662 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:21:15,918 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:21:17,337 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:21:17,729 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:21:17,730 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:21:18,301 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:21:18,569 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:21:19,170 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:21:19,419 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:21:19,420 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:21:20,081 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:21:20,346 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:21:20,834 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:21:21,099 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:21:22,156 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:21:22,566 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:21:22,568 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:21:23,338 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:21:23,595 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:21:24,331 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:21:24,606 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:21:26,154 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:21:26,566 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:26:52,959 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:26:53,610 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:26:53,925 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:26:54,574 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:26:54,885 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:26:56,038 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:26:56,530 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:26:56,532 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:26:57,039 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:26:57,352 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:26:57,881 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:26:58,203 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:26:58,204 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:26:58,769 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:26:59,084 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:26:59,584 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:26:59,867 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:27:00,832 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:27:01,233 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:27:01,234 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:27:01,885 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:27:02,265 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:27:02,928 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:27:03,379 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:27:04,740 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:27:05,374 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:28:17,267 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:28:18,054 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:28:18,385 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:28:19,109 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:28:19,422 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:28:20,884 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:28:21,274 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:28:21,275 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:28:21,852 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:28:22,132 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:28:22,750 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:28:23,049 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:28:23,050 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:28:23,654 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:28:23,931 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:28:24,441 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:28:24,773 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:28:26,085 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:28:26,442 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:28:26,444 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:28:27,322 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:28:27,683 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:28:28,670 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:28:29,012 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:28:30,723 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:28:31,233 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:31:11,343 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:31:12,129 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:31:12,453 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:31:13,161 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:31:13,446 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:31:14,888 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:31:15,286 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:31:15,287 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:31:15,845 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:31:16,142 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:31:16,775 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:31:17,071 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:31:17,072 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:31:17,675 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:31:17,961 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:31:18,445 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:31:18,737 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:31:19,872 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:31:20,238 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:31:20,239 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:31:21,071 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:31:21,416 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:31:22,248 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:31:22,556 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:31:24,081 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:31:24,538 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:35:12,348 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:35:13,212 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:35:13,547 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:35:14,242 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:35:14,530 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:35:15,969 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:35:16,359 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:35:16,360 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:35:16,896 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:35:17,183 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:35:17,796 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:35:18,083 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:35:18,084 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:35:18,651 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:35:18,914 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:35:19,377 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:35:19,666 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:35:20,751 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:35:21,083 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:35:21,084 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:35:21,897 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:35:22,202 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:35:22,996 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:35:23,297 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:35:24,785 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:35:25,232 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:39:36,969 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:39:37,781 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:39:38,129 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:39:38,834 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:39:39,144 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:39:40,634 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:39:41,080 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:39:41,081 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:39:41,680 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:39:41,968 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:39:42,601 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:39:42,890 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:39:42,891 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:39:43,483 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:39:43,770 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:39:44,241 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:39:44,538 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:39:45,621 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:39:45,995 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:39:45,996 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:39:46,782 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:39:47,102 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:39:47,850 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:39:48,175 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:39:49,701 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:39:50,161 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:42:09,695 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:42:10,501 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:42:10,809 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:42:11,556 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:42:11,932 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:42:13,503 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:42:13,964 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:42:13,966 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:42:14,653 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:42:14,940 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:42:15,572 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:42:15,864 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:42:15,865 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:42:16,490 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:42:16,770 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:42:17,248 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:42:17,504 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:42:18,698 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:42:19,095 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:42:19,096 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:42:19,940 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:42:20,245 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:42:21,020 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:42:21,334 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:42:22,979 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:42:23,496 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:42:30,371 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:42:31,198 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:42:31,527 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:42:32,245 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:42:32,513 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:42:33,987 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:42:34,463 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:42:34,464 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:42:35,083 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:42:35,357 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:42:35,985 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:42:36,256 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:42:36,257 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:42:36,875 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:42:37,131 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:42:37,602 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:42:37,867 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:42:38,957 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:42:39,319 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:42:39,319 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:42:40,067 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:42:40,354 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:42:41,161 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:42:41,430 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:42:42,952 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:42:43,439 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:42:58,763 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:42:59,587 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:42:59,924 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:43:00,654 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:43:00,966 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:43:02,486 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:43:02,949 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:43:02,950 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:43:03,640 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:43:03,918 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:43:04,561 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:43:04,844 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:43:04,844 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:43:05,465 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:43:05,731 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:43:06,212 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:43:06,483 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:43:07,636 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:43:07,997 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:43:07,998 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:43:08,792 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:43:09,084 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:43:09,890 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:43:10,231 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:43:11,813 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:43:12,296 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:45:06,333 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:45:07,862 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:45:08,303 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:45:09,158 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:45:09,588 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:45:11,733 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:45:12,507 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:45:12,508 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:45:13,571 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:45:14,002 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:45:15,035 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:45:15,430 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:45:15,431 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:45:16,543 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:45:16,973 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:45:17,858 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:45:18,253 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:45:19,803 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:45:20,300 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:45:20,302 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:45:21,496 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:45:21,826 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:45:22,703 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:45:23,177 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:45:26,074 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:45:26,879 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:45:53,599 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:45:55,114 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:45:55,574 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:45:56,926 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:45:57,370 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:45:59,266 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:45:59,841 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:45:59,842 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:46:00,854 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:46:01,135 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:46:01,791 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:46:02,208 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:46:02,209 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:46:03,394 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:46:03,824 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:46:04,731 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:46:05,101 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:46:07,248 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:46:07,844 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:46:07,845 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:46:09,411 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:46:09,916 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:46:11,233 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:46:11,710 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:46:14,762 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:46:15,401 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:47:09,503 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:47:11,126 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:47:11,623 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:47:12,559 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:47:12,893 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:47:15,368 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:47:16,129 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:47:16,132 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:47:16,886 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:47:17,208 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:47:17,876 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:47:18,331 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:47:18,332 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:47:19,590 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:47:20,047 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:47:20,756 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:47:21,138 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:47:23,051 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:47:23,444 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:47:23,445 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:47:24,893 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:47:25,231 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:47:26,281 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:47:26,751 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:47:29,929 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:47:30,750 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:51:10,345 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:51:11,539 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:51:12,183 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:51:14,016 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:51:14,475 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:51:17,542 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:51:18,442 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:51:18,444 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:51:19,831 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:51:20,393 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:51:21,845 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:51:22,331 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:51:22,332 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:51:23,542 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:51:24,115 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:51:25,720 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:51:26,217 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:51:28,540 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:51:29,184 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:51:29,187 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:51:30,877 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:51:31,455 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:51:33,527 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:51:34,119 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:51:37,493 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:51:38,119 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-28 11:51:50,594 - INFO - Processing group folder: group3_WAG_sampling_seq_root
+2025-05-28 11:51:52,222 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_distributions.png
+2025-05-28 11:51:52,766 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/with_data2/combined_boxplot.png
+2025-05-28 11:51:54,202 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_distributions.png
+2025-05-28 11:51:54,683 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/without_data2/combined_boxplot.png
+2025-05-28 11:51:57,567 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_distributions.png
+2025-05-28 11:51:58,341 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_sampling_seq_root/group3_WAG_sampling_seq_root_all_combined_boxplot.png
+2025-05-28 11:51:58,344 - INFO - Processing group folder: group1_four_model_F
+2025-05-28 11:51:59,017 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-28 11:51:59,384 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-28 11:52:00,542 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-28 11:52:00,991 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-28 11:52:00,992 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-28 11:52:01,921 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_distributions.png
+2025-05-28 11:52:02,209 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/with_data2/combined_boxplot.png
+2025-05-28 11:52:03,167 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_distributions.png
+2025-05-28 11:52:03,612 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/without_data2/combined_boxplot.png
+2025-05-28 11:52:05,796 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-28 11:52:06,389 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-28 11:52:06,390 - INFO - Processing group folder: group2_WAG_posterior_extra_length
+2025-05-28 11:52:07,919 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_distributions.png
+2025-05-28 11:52:08,253 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/with_data2/combined_boxplot.png
+2025-05-28 11:52:09,715 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_distributions.png
+2025-05-28 11:52:10,211 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/without_data2/combined_boxplot.png
+2025-05-28 11:52:12,635 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_distributions.png
+2025-05-28 11:52:13,220 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_posterior_extra_length/group2_WAG_posterior_extra_length_all_combined_boxplot.png
+2025-05-31 01:46:43,022 - INFO - Processing group folder: group3_WAG_EP_R
+2025-05-31 01:46:44,936 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_EP_R/combined_distributions.png
+2025-05-31 01:46:45,395 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_EP_R/combined_boxplot.png
+2025-05-31 01:46:47,086 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_EP_R/group3_WAG_EP_R_all_combined_distributions.png
+2025-05-31 01:46:47,494 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_EP_R/group3_WAG_EP_R_all_combined_boxplot.png
+2025-05-31 01:46:47,495 - INFO - Processing group folder: group2_WAG_F_P_E
+2025-05-31 01:46:49,472 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_F_P_E/combined_distributions.png
+2025-05-31 01:46:49,935 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_F_P_E/combined_boxplot.png
+2025-05-31 01:46:51,961 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_F_P_E/group2_WAG_F_P_E_all_combined_distributions.png
+2025-05-31 01:46:52,446 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_F_P_E/group2_WAG_F_P_E_all_combined_boxplot.png
+2025-05-31 01:46:52,447 - INFO - Processing group folder: group1_four_model_F
+2025-05-31 01:46:53,179 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-31 01:46:53,440 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-31 01:46:54,209 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-31 01:46:54,487 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-31 01:46:54,488 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-31 01:46:55,951 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/combined_distributions.png
+2025-05-31 01:46:56,296 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/combined_boxplot.png
+2025-05-31 01:46:57,702 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-31 01:46:58,039 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
+2025-05-31 01:51:08,189 - INFO - Processing group folder: group3_WAG_EP_R
+2025-05-31 01:51:09,943 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_EP_R/combined_distributions.png
+2025-05-31 01:51:10,422 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_EP_R/combined_boxplot.png
+2025-05-31 01:51:12,143 - INFO - Combined plot saved to: viridiplantae_group_plots/group3_WAG_EP_R/group3_WAG_EP_R_all_combined_distributions.png
+2025-05-31 01:51:12,538 - INFO - Boxplot saved to: viridiplantae_group_plots/group3_WAG_EP_R/group3_WAG_EP_R_all_combined_boxplot.png
+2025-05-31 01:51:12,539 - INFO - Processing group folder: group2_WAG_F_P_E
+2025-05-31 01:51:14,211 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_F_P_E/combined_distributions.png
+2025-05-31 01:51:14,607 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_F_P_E/combined_boxplot.png
+2025-05-31 01:51:16,387 - INFO - Combined plot saved to: viridiplantae_group_plots/group2_WAG_F_P_E/group2_WAG_F_P_E_all_combined_distributions.png
+2025-05-31 01:51:16,780 - INFO - Boxplot saved to: viridiplantae_group_plots/group2_WAG_F_P_E/group2_WAG_F_P_E_all_combined_boxplot.png
+2025-05-31 01:51:16,782 - INFO - Processing group folder: group1_four_model_F
+2025-05-31 01:51:17,418 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/combined_distributions.png
+2025-05-31 01:51:17,633 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/combined_boxplot.png
+2025-05-31 01:51:18,430 - INFO - Combined plot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_distributions.png
+2025-05-31 01:51:18,659 - INFO - Boxplot saved to: viridiplantae_group_plots/group1_four_model_F/group1_four_model_F_all_combined_boxplot.png
+2025-05-31 01:51:18,659 - INFO - Processing group folder: group4_WAG_basic_comparison
+2025-05-31 01:51:19,910 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/combined_distributions.png
+2025-05-31 01:51:20,204 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/combined_boxplot.png
+2025-05-31 01:51:21,378 - INFO - Combined plot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_distributions.png
+2025-05-31 01:51:21,656 - INFO - Boxplot saved to: viridiplantae_group_plots/group4_WAG_basic_comparison/group4_WAG_basic_comparison_all_combined_boxplot.png
