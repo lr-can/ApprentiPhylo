@@ -1,0 +1,9 @@
+Removing outlier step : 
+2413/22094 files conserved (10.92 %) 
+	- Empty files : 0 (0.00%) 
+	- Too long sequences (>10000 sites) : 0 (0.00%)
+	- Too short sequences (<10 sites) : 0 (0.00%)
+	- Not enough sequences (<5) : 19681 (89.08%)
+Removing gap step : 382565/654017 sites conserved (58.49 %) 
+Removing ambiguous site step on gapless data : 381818/382565 sites conserved (99.80 %) 
+Removing ambiguous site step on clean data : 652170/654017 sites conserved (99.72 %) 
