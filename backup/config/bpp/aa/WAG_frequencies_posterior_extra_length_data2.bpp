@@ -1,0 +1,39 @@
+### Posterior simulations with free external branches. Same model
+## WAG01 with equilibrium frequencies from alignment 1 is used, but
+## internal branches transition probabilities are posterior, and
+## external branches have a specific rate: EXT_RATE
+
+## root sampled from sites of alignment 2
+
+alphabet = Protein
+
+# Input data: alignment file to use as the root sequence
+input.data1=alignment(file= $(IN_SEQ), format=Fasta(extended=yes, strict_name=no), sites_to_use = all, max_gap_allowed = 50%, max_unresolved_allowed = 100%)
+input.data2=alignment(file= $(IN_SEQ2), format=Fasta(extended=yes, strict_name=no), sites_to_use = all, max_gap_allowed = 50%, max_unresolved_allowed = 100%)
+
+# Evolutionary tree
+input.tree1=user(file= $(TREE),format=Newick)
+
+# Root frequencies: observed from data 1
+root_freq1 = Fixed(init=observed, data=1)
+
+# Model of evolution: 
+model1 = WAG01+F(frequencies=Fixed(init=observed, data=1, init.observedPseudoCount=1))
+
+model2 = WAG01+F(frequencies=Fixed(init=observed, data=1, init.observedPseudoCount=1), rate=$(EXT_RATE))
+
+# rate distribution
+rate_distribution1 = Constant()
+
+# Process 
+process1 = NonHomogeneous(model1=1, model1.nodes_id=NoLeaves, model2=2, model2.nodes_id=Leaves, rate=1, tree=1, root_freq=1)
+
+# Phylo Likelihood
+phylo1 = Simple(process=1, data=1)
+
+
+#simul 
+simul1 = simul(phylo=1,root.data=SitesFrom(2),output.sequence.file = $(OUT_SEQ), output.sequence.format = Fasta, output.internal.sequences = false, nullnodes = Leaves, number_of_sites=$(NSEQ))
+
+
+
