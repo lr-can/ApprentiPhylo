@@ -8,7 +8,8 @@ Inclut :
  - représentation graphique des arbres phylogénétiques annotés avec MPD.  
 Utilise matplotlib et BioPython pour la visualisation.
 """
-
+import matplotlib
+matplotlib.use("Agg")  # Backend non graphique pour les serveurs
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import pandas as pd

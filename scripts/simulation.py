@@ -167,8 +167,9 @@ class BppSimulator:
                 # Construire la commande
                 command = [
                     "bppseqgen",
-                    f"param=file({self.config})"
+                    f"param={self.config.resolve()}"
                 ] + [f"{key}={value}" for key, value in dargs.items()]
+
 
                 print(f"[{i}/{n}] Simulating {famname}...")
                 print("  Running:", " ".join(command))  # affichage de debug

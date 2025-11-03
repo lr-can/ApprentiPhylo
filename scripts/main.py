@@ -29,6 +29,7 @@ from filter_mono import copy_mono_files
 from preprocess import Preprocess
 from simulation import ESMsimulator, BppSimulator
 from report import generate_pdf_report
+from phylo_metrics import tree_summary
 
 # === LOGGING ===
 def log_step(step_name, args_dict, status, start_time):
@@ -121,8 +122,23 @@ def simulate_cmd(args):
                 m = tree_summary(tree_file)
                 writer.writerow({"tree": tree_file.name, **m})
 
+        # === CLASSIFICATION ===
+        print("\n[5/6] Running classification between real and simulated alignments...")
+        try:
+            run_classification(
+                realali=str(clean_align_dir),
+                simali=str(args.sim_output),
+                output=str(args.class_output),
+                config=str(args.class_config),
+                tools=str(args.tools)
+            )
+            print("✅ Classification completed.")
+        except Exception as e:
+            print(f"❌ Classification failed: {e}")
+            raise
+
         # === REPORT ===
-        print("\n[5/5] Generating final report PDF...")
+        print("\n[6/6] Generating final report PDF...")
         generate_pdf_report(args.sim_output, args.report_output)
 
         log_step("simulate_pipeline", vars(args), "success", global_start)
@@ -190,6 +206,7 @@ def main():
 
     # --- SIMULATE (FULL PIPELINE) ---
     p_sim = subparsers.add_parser("simulate", help="Run full pipeline (preprocess + simulate + tree + metrics + report).")
+
     # PREPROCESS ARGS
     p_sim.add_argument("--pre-input", required=True, help="Raw alignments directory.")
     p_sim.add_argument("--pre-output", required=True, help="Output directory for cleaned alignments.")
@@ -197,12 +214,19 @@ def main():
     p_sim.add_argument("--maxsites", type=int, required=True, help="Maximum number of sites.")
     p_sim.add_argument("--minsites", type=int, required=True, help="Minimum number of sites.")
     p_sim.add_argument("--alphabet", choices=["aa", "dna"], required=True, help="Alphabet type.")
+
     # SIMULATION ARGS
     p_sim.add_argument("--align", "-a", required=True, help="Directory containing alignments (used in simulation).")
     p_sim.add_argument("--tree", "-t", required=True, help="Directory containing phylogenetic trees.")
     p_sim.add_argument("--config", "-c", type=str, required=True, help="BPP configuration files.")
     p_sim.add_argument("--sim-output", required=True, help="Output directory for simulated data.")
     p_sim.add_argument("--ext_rate", "-e", help="External branch rate (for BPP).")
+
+    # CLASSIFICATION ARGS
+    p_sim.add_argument("--class-config", required=True, help="Path to classification config JSON file.")
+    p_sim.add_argument("--class-output", required=True, help="Output directory for classification results.")
+    p_sim.add_argument("--tools", required=True, help="Path to external tools directory (simulations-classifiers, etc.)")
+
     # TREE & METRICS OUTPUTS
     p_sim.add_argument("--tree-output", required=True, help="Output directory for generated trees.")
     p_sim.add_argument("--metrics-output", required=True, help="Output directory for metrics (MPD).")
@@ -238,9 +262,9 @@ if __name__ == "__main__":
     main()
 
 # === COMMANDE QUI MARCHE ===
-#python3 main.py simulate \
+#python3 scripts/main.py simulate \
 #  --pre-input data/prot_mammals \
-#  --pre-output results/preprocessed \
+#  --pre-output results/preprocessed/clean_data \
 #  --minseq 5 --maxsites 2000 --minsites 100 \
 #  --alphabet aa \
 #  --align results/preprocessed/clean_data \
@@ -250,4 +274,7 @@ if __name__ == "__main__":
 #  --ext_rate 0.3 \
 #  --tree-output results/trees \
 #  --metrics-output results/metrics \
+#  --class-config config/classification.json \
+#  --class-output results/classification \
+#  --tools tools \
 #  --report-output results/report
