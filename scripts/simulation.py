@@ -185,4 +185,3 @@ class BppSimulator:
                 print(f"❌ Unexpected error for {famname}: {e}")
 
         print(f"\nSimulation phase completed in {time.time() - start:.1f}s.")
-

@@ -196,7 +196,6 @@ def report_cmd(args):
 
 
 # === MAIN ENTRYPOINT ===
-
 def main():
     parser = argparse.ArgumentParser(
         description="Unified bioinformatics pipeline. Launch full workflow with 'simulate'."
@@ -225,7 +224,6 @@ def main():
     p_sim.add_argument("--class-config", required=True, help="Classification config JSON template.")
     p_sim.add_argument("--class-output", required=True, help="Output directory for classification results.")
     p_sim.add_argument("--tools", required=True, help="Tools root directory (contient simulations-classifiers).")
-
 
     # TREE & METRICS OUTPUTS
     p_sim.add_argument("--tree-output", required=True, help="Output directory for generated trees.")
