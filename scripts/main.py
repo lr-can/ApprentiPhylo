@@ -282,19 +282,22 @@ if __name__ == "__main__":
     main()
 
 # === COMMANDE QUI MARCHE ===
-#python3 scripts/main.py simulate \
-#  --pre-input data/prot_mammals \
-#  --pre-output results/preprocessed/clean_data \
-#  --minseq 5 --maxsites 2000 --minsites 100 \
-#  --alphabet aa \
-#  --align results/preprocessed/clean_data \
-#  --tree data/prot_mammals/trees \
-#  --config backup/config/bpp/aa/WAG_frequencies.bpp \
-#  --sim-output results/simulations \
-#  --ext_rate 0.3 \
-#  --tree-output results/trees \
-#  --metrics-output results/metrics \
-#  --class-config backup/config_template.json \
-#  --class-output results/classification \
-#  --tools backup/ \
-#  --report-output results/report
+"""
+python3 scripts/main.py simulate \
+ --pre-input data/prot_mammals \
+ --pre-output results/preprocessed/clean_data \
+ --minseq 5 --maxsites 2000 --minsites 100 \
+ --alphabet aa \
+ --align results/preprocessed/clean_data \
+ --tree data/prot_mammals/trees \
+ --config backup/config/bpp/aa/WAG_frequencies.bpp \
+ --sim-output results/simulations \
+ --ext_rate 0.3 \
+ --tree-output results/trees \
+ --metrics-output results/metrics \
+ --class-config backup/config_template.json \
+ --class-output results/classification \
+ --tools backup/ \
+ --report-output results/report
+ 
+ """

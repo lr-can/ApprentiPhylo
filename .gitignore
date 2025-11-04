@@ -7,3 +7,6 @@ results/
 *.log
 bpp3/*
 *_log*
+backup/__pycache__/
+.venv/
+*venv*/

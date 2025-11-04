@@ -15,6 +15,7 @@ import random
 import re
 import sys
 import time
+from tqdm import tqdm
 
 
 class AddGap:
@@ -179,28 +180,26 @@ class BppSimulator:
             None
         """
         start = time.time()
-        alignments = sorted(Path(self.align_dir).glob("*.fasta"))
+        alignments = sorted(Path(self.align_dir).glob("clean_data/*.fasta"))
         n = len(alignments)
-        print(f"  > Found {n} alignments to simulate.")
+        print(f"  > Found {n} alignments to simulate.\n")
 
         if n == 0:
-            print("⚠️ Aucun alignement trouvé, arrêt de la simulation.")
+            print("⚠️ No alignments found for simulation. Exiting.")
             return
 
-        for i, align_path in enumerate(alignments, start=1):
+        for align_path in tqdm(alignments, desc="Alignments' simulation", unit="fichier"):
             famname = align_path.stem
             try:
                 tree_path = Path(self.tree_dir) / f"{famname}.nwk"
                 if not tree_path.exists():
-                    print(f"  ⚠️ Tree not found for {famname}, skipping.")
+                    tqdm.write(f"  ⚠️ Tree not found for {famname}, skipping.")
                     continue
 
-                # Lire le nombre de sites dans l’alignement
                 sequences = list(SeqIO.parse(align_path, "fasta"))
                 nseq = len(sequences)
-                nsite = len(sequences[0].seq) if nseq > 0 else 100  # fallback
+                nsite = len(sequences[0].seq) if nseq > 0 else 100
 
-                # Préparer les macros pour bppseqgen
                 dargs = {
                     "IN_SEQ": str(align_path),
                     "TREE": str(tree_path),
@@ -208,24 +207,17 @@ class BppSimulator:
                     "NSEQ": nsite
                 }
 
-                # Construire la commande
                 command = [
                     "bppseqgen",
                     f"param={self.config.resolve()}"
                 ] + [f"{key}={value}" for key, value in dargs.items()]
 
-
-                print(f"[{i}/{n}] Simulating {famname}...")
-                print("  Running:", " ".join(command))  # affichage de debug
-
                 result = subprocess.run(command, capture_output=True, text=True)
 
                 if result.returncode != 0:
-                    print(f"❌ Error for {famname}: {result.stderr.strip()}")
-                else:
-                    print(f"✅ Simulation done for {famname}")
+                    tqdm.write(f"❌ Error for {famname}: {result.stderr.strip()}")
 
             except Exception as e:
-                print(f"❌ Unexpected error for {famname}: {e}")
+                tqdm.write(f"❌ Unexpected error for {famname}: {e}")
 
         print(f"\nSimulation phase completed in {time.time() - start:.1f}s.")
