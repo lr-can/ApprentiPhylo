@@ -14,6 +14,10 @@ def mean_pairwise_distance(tree_file):
     """
     Calcule le MPD (Mean Pairwise Distance) pour un arbre Newick.
     tree_file : chemin vers le fichier .nw ou .nwk
+    Args:
+        tree_file (str): Chemin vers le fichier Newick de l’arbre.
+    Returns:
+        float: Valeur du MPD.
     """
     tree_file = Path(tree_file)
     tree = Phylo.read(tree_file, "newick")
@@ -35,6 +39,10 @@ def mean_pairwise_distance(tree_file):
 def tree_summary(tree_file):
     """
     Retourne un dictionnaire de métriques phylogénétiques.
+    Args:
+        tree_file (str): Chemin vers le fichier Newick de l’arbre.
+    Returns:
+        dict: Dictionnaire contenant les métriques calculées.
     """
     return {
         "MPD": mean_pairwise_distance(tree_file),

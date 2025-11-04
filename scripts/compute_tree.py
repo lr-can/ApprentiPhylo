@@ -23,6 +23,11 @@ class ComputingTrees:
     def compute_tree(self, inputname, outputname):
         """
         Calcule un arbre phylogénétique avec FastTree.
+        Args:
+            inputname (str): Nom du fichier d’entrée (alignement).
+            outputname (str): Nom du fichier de sortie (arbre Newick).
+        Returns:
+            None
         """
         fastaname = self.input / inputname
 
@@ -44,6 +49,8 @@ class ComputingTrees:
     def compute_all_trees(self):
         """
         Calcule les arbres pour tous les fichiers de l’entrée.
+        Returns:
+            None
         """
         files = [f.name for f in self.input.iterdir() if f.is_file()]
 

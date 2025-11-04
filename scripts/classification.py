@@ -13,6 +13,14 @@ import subprocess
 def run_classification(realali, simali, output, config, tools):
     """
     Exécute la pipeline de classification en préparant la configuration JSON.
+    Args:
+        realali (str): Chemin vers les alignements réels.
+        simali (str): Chemin vers les alignements simulés.
+        output (str): Dossier de sortie pour les résultats de classification.
+        config (str): Chemin vers le fichier de configuration template JSON.
+        tools (str): Chemin vers le dossier des outils nécessaires.
+    Returns:
+        None
     """
     output = Path(output)
     real_ali = Path(realali)

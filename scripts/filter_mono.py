@@ -12,6 +12,12 @@ import shutil
 def copy_mono_files(target_dir, source_dir, fam_file):
     """
     Copie les fichiers .aln correspondant aux FAM IDs spécifiés.
+    Args:
+        target_dir (str): Dossier de destination pour les fichiers copiés.
+        source_dir (str): Dossier source contenant les fichiers .aln.
+        fam_file (str): Fichier texte contenant les FAM IDs à copier.
+    Returns:
+        None
     """
     target_dir = Path(target_dir)
     source_dir = Path(source_dir)

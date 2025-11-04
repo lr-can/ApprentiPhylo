@@ -14,6 +14,9 @@ import os
 
 
 class Preprocess:
+    """
+    Classe de prétraitement des alignements multiples.
+    """
     def __init__(self, input_dir, output_dir, minseq, maxsites, minsites, alphabet):
         self.input = Path(input_dir)
         self.output = Path(output_dir)
@@ -33,6 +36,13 @@ class Preprocess:
         self.clean_output = None
 
     def remove_outliers(self):
+        """
+        Supprime les fichiers d’alignement qui ne respectent pas les critères définis.
+        Args:
+            None
+        Returns:
+            list: Liste des fichiers conservés après le filtrage.
+        """
         files = [f for f in self.input.iterdir() if f.suffix in (".aln", ".fasta")]
 
         correct_files = []
@@ -68,6 +78,13 @@ class Preprocess:
         return correct_files
 
     def write_clean_file(self, filename):
+        """
+        Ecrit un fichier d’alignement nettoyé sans descriptions.
+        Args:
+            filename (Path): Chemin vers le fichier d’alignement à nettoyer.
+        Returns:
+            None
+        """
         fileout = filename.stem + '.fasta'
         with open(self.clean_output / fileout, 'w') as f:
             for record in SeqIO.parse(filename, "fasta"):
@@ -75,6 +92,13 @@ class Preprocess:
                 SeqIO.write(new_record, f, "fasta")
 
     def preprocessing(self):
+        """
+        Lance le prétraitement complet : suppression des outliers et écriture des fichiers nettoyés.
+        Args:
+            None
+        Returns:
+            None
+        """
         clean_files = self.remove_outliers()
         self.clean_output = self.output / 'clean_data'
         self.clean_output.mkdir(exist_ok=True)
@@ -82,6 +106,13 @@ class Preprocess:
             self.write_clean_file(file)
 
     def gaps_seq(self, filename):
+        """
+        Identifie les positions avec des gaps dans un alignement.
+        Args:
+            filename (str): Nom du fichier d’alignement.
+        Returns:
+            list: Liste indiquant les positions avec gaps (1) ou sans gaps (0).
+        """
         file_path = Path(filename)
         if not file_path.is_absolute():
             file_path = self.clean_output / file_path
@@ -94,6 +125,13 @@ class Preprocess:
         return gap
 
     def remove_gaps(self):
+        """
+        Retire les sites contenant des gaps des alignements nettoyés.
+        Args:
+            None
+        Returns:
+            None
+        """
         if not self.clean_output:
             raise Exception("You must run preprocessing before running remove_gaps")
         
@@ -126,6 +164,13 @@ class Preprocess:
 
 
     def ambig_in_align(self, filepath):
+        """
+        Identifie les positions ambiguës dans un alignement.
+        Args:
+            filepath (Path): Chemin vers le fichier d’alignement.
+        Returns:
+            list: Liste indiquant les positions ambiguës (1) ou non (0).
+        """
         for i, record in enumerate(SeqIO.parse(filepath, 'fasta')):
             if i == 0:
                 ambig = [0] * len(record.seq)
@@ -135,6 +180,14 @@ class Preprocess:
         return ambig
 
     def remove_ambig_sites(self, where):
+        """
+        Retire les sites ambigus des alignements nettoyés ou sans gaps.
+        Args:
+            where (str): 'gapless' pour les alignements sans gaps, 'clean'
+                          pour les alignements nettoyés.
+        Returns:
+            None
+        """
         if where == 'gapless':
             without_ambig_output = self.output / 'gap_and_ambigless'
             path = self.output / 'gap_less'

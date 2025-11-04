@@ -22,8 +22,11 @@ from phylo_metrics import tree_summary
 def generate_pdf_report(simulation_folder, output_dir):
     """
     Génère un PDF avec statistiques, histogrammes et arbres pour une simulation.
-    simulation_folder : dossier contenant fichiers .fasta et arbres .nw
-    output_dir : dossier où sauvegarder le rapport PDF
+    Args:
+        simulation_folder (str): Dossier contenant les résultats de la simulation.
+        output_dir (str): Dossier où enregistrer le rapport PDF.
+    Returns:
+        str: Chemin vers le fichier PDF généré.
     """
     simulation_folder = Path(simulation_folder)
     output_dir = Path(output_dir)

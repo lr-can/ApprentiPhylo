@@ -13,7 +13,11 @@ import numpy as np
 
 
 def setup_visualization():
-    """Configure le style de visualisation."""
+    """
+    Configure le style de visualisation.
+    Returns:
+        None
+    """
     try:
         import seaborn as sns
         sns.set(style="whitegrid")
@@ -23,7 +27,14 @@ def setup_visualization():
 
 
 def determine_global_range(file_paths, columns):
-    """Détermine les bornes globales (min et max) pour chaque colonne."""
+    """
+    Détermine les bornes globales (min et max) pour chaque colonne.
+    Args:
+        file_paths (list): Liste des chemins de fichiers TSV.
+        columns (list): Liste des colonnes à analyser.
+    Returns:
+        tuple: Dictionnaires des valeurs minimales et maximales pour chaque colonne.
+    """
     global_min, global_max = {}, {}
     for col in columns:
         col_min, col_max = float('inf'), float('-inf')
@@ -38,7 +49,17 @@ def determine_global_range(file_paths, columns):
 
 
 def generate_histograms(file_path, columns, global_min, global_max, bins=20):
-    """Génère et enregistre des histogrammes pour chaque colonne."""
+    """
+    Génère et enregistre des histogrammes pour chaque colonne.
+    Args:
+        file_path (str): Chemin vers le fichier TSV.
+        columns (list): Liste des colonnes à analyser.
+        global_min (dict): Dictionnaire des valeurs minimales globales.
+        global_max (dict): Dictionnaire des valeurs maximales globales.
+        bins (int): Nombre de bins pour l’histogramme.
+    Returns:
+        None
+    """
     data = pd.read_csv(file_path, sep='\t')
     base_name = Path(file_path).stem
     output_dir = Path(f"{base_name}_plots")
@@ -64,7 +85,13 @@ def generate_histograms(file_path, columns, global_min, global_max, bins=20):
 
 
 def describe_data(files):
-    """Pipeline complet pour générer les histogrammes."""
+    """
+    Pipeline complet pour générer les histogrammes.
+    Args:
+        files (list): Liste des chemins de fichiers TSV.
+    Returns:
+        None
+    """
     setup_visualization()
     columns = ["identity", "gap", "length", "nseq"]
     global_min, global_max = determine_global_range(files, columns)

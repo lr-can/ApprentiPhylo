@@ -18,7 +18,13 @@ import time
 
 
 class AddGap:
-    """Ajoute les motifs de gaps des alignements empiriques aux simulations."""
+    """
+    Ajoute les motifs de gaps des alignements empiriques aux simulations.
+    Attrs:
+        empirical (str): Dossier des alignements empiriques.
+        simulate (str): Dossier des alignements simulés.
+        output (str): Dossier de sortie pour les alignements simulés avec gaps.
+    """
 
     def __init__(self, empirical, simulate, output):
         self.empirical = Path(empirical)
@@ -28,6 +34,13 @@ class AddGap:
         self.add_gap()
 
     def add_gap(self):
+        """
+        Ajoute les gaps aux séquences simulées en se basant sur les alignements empiriques.
+        Args:
+            None
+        Returns:
+            None
+        """
         for file in self.simulate.iterdir():
             if file.suffix != ".fasta":
                 continue
@@ -53,8 +66,14 @@ class AddGap:
 
 
 class ESMsimulator:
-    """Simulation basée sur ESM (Evolutionary Scale Modeling)."""
-
+    """
+    Simulation basée sur ESM (Evolutionary Scale Modeling).
+    Attrs:
+        align (str): Dossier des alignements d’entrée.
+        tree (str): Dossier des arbres phylogénétiques.
+        output (str): Dossier de sortie pour les alignements simulés.
+        tools (str): Dossier des outils nécessaires.
+    """
     def __init__(self, align, tree, output, tools):
         self.align = Path(align)
         self.tree = Path(tree)
@@ -65,6 +84,13 @@ class ESMsimulator:
         self.outputsim.mkdir(parents=True, exist_ok=True)
 
     def simulate(self, gap=False):
+        """
+        Lance les simulations d’alignements avec ESM.
+        Args:
+            gap (bool): Indique si les gaps doivent être ajoutés après simulation.
+        Returns:
+            None
+        """
         for align_name in self.align.iterdir():
             if align_name.suffix != ".fasta":
                 continue
@@ -101,7 +127,15 @@ class ESMsimulator:
 
 
 class BppSimulator:
-    """Simulation basée sur bppseqgen."""
+    """
+    Simulation basée sur bppseqgen.
+    Attrs:
+        align (str): Dossier des alignements d’entrée.
+        tree (str): Dossier des arbres phylogénétiques.
+        config (str): Fichier de configuration pour bppseqgen.
+        output (str): Dossier de sortie pour les alignements simulés.
+        ext_rate (float, optional): Taux d’extension des gaps.
+    """
 
     def __init__(self, align, tree, config, output, ext_rate=None):
         self.align_dir = Path(align)
@@ -122,7 +156,13 @@ class BppSimulator:
                 raise ValueError(f"Macro {kw} manquante dans {self.config}")
 
     def pick_longer_alignment(self, align):
-        """Choisit un alignement plus long que celui fourni, sinon renvoie l'original."""
+        """
+        Choisit un alignement plus long que celui fourni, sinon renvoie l'original.
+        Args:
+            align (Path): Chemin vers l’alignement de référence.
+        Returns:
+            choice (Path): Chemin vers l’alignement choisi.
+        """
         data1_len = len(next(SeqIO.parse(align, "fasta")).seq)
         candidates = [
             f for f in self.align_dir.glob("*.fasta")
@@ -133,6 +173,10 @@ class BppSimulator:
     def simulate(self):
         """
         Lance les simulations d’alignements avec bppseqgen à partir des alignements propres.
+        Args:
+            None
+        Returns:
+            None
         """
         start = time.time()
         alignments = sorted(Path(self.align_dir).glob("*.fasta"))

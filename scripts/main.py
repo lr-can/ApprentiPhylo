@@ -33,7 +33,16 @@ from phylo_metrics import tree_summary
 
 # === LOGGING ===
 def log_step(step_name, args_dict, status, start_time):
-    """Log each pipeline step into CSV file."""
+    """
+    Log each pipeline step into CSV file.
+    Args:
+        step_name (str): Name of the pipeline step.
+        args_dict (dict): Arguments used for the step.
+        status (str): Status of the step (e.g., "success", "error").
+        start_time (float): Start time of the step.
+    Returns:
+        None
+    """
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
     log_file = log_dir / "pipeline_log.csv"
@@ -54,6 +63,13 @@ def log_step(step_name, args_dict, status, start_time):
 
 # === PIPELINE STEPS ===
 def preprocess_cmd(args):
+    """
+    Launch preprocessing step.
+    Args:
+        args: Parsed command-line arguments.
+    Returns:
+        None
+    """
     start = time.time()
     try:
         pr = Preprocess(
@@ -75,7 +91,13 @@ def preprocess_cmd(args):
 
 
 def simulate_cmd(args):
-    """Launch full pipeline automatically starting from simulation."""
+    """
+    Launch full pipeline automatically starting from simulation.
+    Args:
+        args: Parsed command-line arguments.
+    Returns:
+        None
+    """
     global_start = time.time()
 
     try:
