@@ -1,0 +1,118 @@
+[project]
+name = "classifiers"
+version = "0.1.0"
+description = "Classifiers for simulations project"
+authors = [
+    { name = "Julien Barnier", email = "julien.barnier@cnrs.fr" }
+]
+dependencies = [
+    "numpy>=2.0.0",
+    "ipykernel>=6.29.5",
+    "polars>=1.5.0",
+    "scikit-learn>=1.5.1",
+    "torch>=2.4.1",
+    "pytorch-ignite>=0.5.1",
+    "biopython>=1.84",
+    "torchmetrics>=1.4.2",
+    "tqdm>=4.66.5",
+    "ipywidgets>=8.1.5",
+    "jupyterlab>=4.2.5",
+]
+readme = "README.md"
+requires-python = ">= 3.12"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "py-spy>=0.3.14",
+    "pytest>=8.2.2",
+    "scalene>=1.5.42.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+
+[tool.black]
+target-version = ["py312"]
+line-length = 110
+skip-string-normalization = true
+
+
+[tool.ruff]
+exclude = ["__pycache__", "__pypackages__", ".git", ".venv"]
+target-version = "py311"
+line-length = 110
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "ARG",
+    "B",
+    "C",
+    "DTZ",
+    "E",
+    "EM",
+    "F",
+    "FBT",
+    "I",
+    "ICN",
+    "ISC",
+    "N",
+    "PLC",
+    "PLE",
+    "PLR",
+    "PLW",
+    "Q",
+    "RUF",
+    "S",
+    "T",
+    "TID",
+    "UP",
+    "W",
+    "YTT",
+]
+ignore = [
+    # Allow non-abstract empty methods in abstract base classes
+    "B027",
+    # Allow boolean positional values in function calls, like `dict.get(... True)`
+    "FBT003",
+    # Ignore checks for possible passwords
+    "S105",
+    "S106",
+    "S107",
+    # Ignore complexity
+    "C901",
+    "PLR0911",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+    "N806",
+    "A001",
+    "A002",
+    "PLW2901",
+    "S101",
+    "PLR2004"
+]
+unfixable = [
+    # Don't touch unused imports
+    "F401",
+]
+flake8-tidy-imports = { ban-relative-imports = "all" }
+isort = { known-first-party = ["deepselect"] }
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 110
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
+[tool.ruff.format]
+docstring-code-format = true

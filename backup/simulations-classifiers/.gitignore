@@ -1,0 +1,15 @@
+
+# python generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.*_cache
+
+.venv
+.ipynb_checkpoints
+train_*
+sync_*
+scripts/

@@ -80,7 +80,7 @@ def simulate_cmd(args):
 
     try:
         # === PREPROCESS ===
-        print("\n[1/5] Preprocessing input alignments...") 
+        print("\n[1/6] Preprocessing input alignments...") 
         pre_args = argparse.Namespace( 
             input=args.pre_input, 
             output=args.pre_output, 
@@ -93,7 +93,7 @@ def simulate_cmd(args):
         clean_align_dir = Path(pre_args.output)  # récupère le dossier final nettoyé
 
         # === SIMULATION ===
-        print("\n[2/5] Running simulations...")
+        print("\n[2/6] Running simulations...")
         config_file = args.config[0] if isinstance(args.config, list) else args.config
 
         bpp_sim = BppSimulator(
@@ -106,12 +106,12 @@ def simulate_cmd(args):
         bpp_sim.simulate()
 
         # === TREE COMPUTATION ===
-        print("\n[3/5] Computing trees...")
+        print("\n[3/6] Computing trees...")
         tree_cp = ComputingTrees(args.sim_output, args.tree_output, args.alphabet)
         tree_cp.compute_all_trees()
 
         # === METRICS (MPD) ===
-        print("\n[4/5] Computing phylogenetic metrics (MPD)...")
+        print("\n[4/6] Computing phylogenetic metrics (MPD)...")
         metrics_dir = Path(args.metrics_output)
         metrics_dir.mkdir(parents=True, exist_ok=True)
         out_csv = metrics_dir / "phylo_metrics.csv"
@@ -126,16 +126,15 @@ def simulate_cmd(args):
         print("\n[5/6] Running classification between real and simulated alignments...")
         try:
             run_classification(
-                realali=str(clean_align_dir),
-                simali=str(args.sim_output),
-                output=str(args.class_output),
-                config=str(args.class_config),
-                tools=str(args.tools)
+                realali=pre_args.output,
+                simali=args.sim_output,
+                output=args.class_output,
+                config=args.class_config,
+                tools=args.tools
             )
-            print("✅ Classification completed.")
+            print("✅ Classification done.")
         except Exception as e:
             print(f"❌ Classification failed: {e}")
-            raise
 
         # === REPORT ===
         print("\n[6/6] Generating final report PDF...")
@@ -223,9 +222,10 @@ def main():
     p_sim.add_argument("--ext_rate", "-e", help="External branch rate (for BPP).")
 
     # CLASSIFICATION ARGS
-    p_sim.add_argument("--class-config", required=True, help="Path to classification config JSON file.")
+    p_sim.add_argument("--class-config", required=True, help="Classification config JSON template.")
     p_sim.add_argument("--class-output", required=True, help="Output directory for classification results.")
-    p_sim.add_argument("--tools", required=True, help="Path to external tools directory (simulations-classifiers, etc.)")
+    p_sim.add_argument("--tools", required=True, help="Tools root directory (contient simulations-classifiers).")
+
 
     # TREE & METRICS OUTPUTS
     p_sim.add_argument("--tree-output", required=True, help="Output directory for generated trees.")
@@ -269,12 +269,12 @@ if __name__ == "__main__":
 #  --alphabet aa \
 #  --align results/preprocessed/clean_data \
 #  --tree data/prot_mammals/trees \
-#  --config config/bpp/aa/WAG_frequencies.bpp \
+#  --config backup/config/bpp/aa/WAG_frequencies.bpp \
 #  --sim-output results/simulations \
 #  --ext_rate 0.3 \
 #  --tree-output results/trees \
 #  --metrics-output results/metrics \
-#  --class-config config/classification.json \
+#  --class-config backup/config_template.json \
 #  --class-output results/classification \
-#  --tools tools \
+#  --tools backup/ \
 #  --report-output results/report
