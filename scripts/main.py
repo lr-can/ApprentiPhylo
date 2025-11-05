@@ -112,7 +112,7 @@ def simulate_cmd(args):
             alphabet=args.alphabet 
             )
         preprocess_cmd(pre_args)
-        clean_align_dir = Path(pre_args.output)  # récupère le dossier final nettoyé
+        clean_align_dir = Path(args.align)  # récupère le dossier final nettoyé
 
         # === SIMULATION ===
         print("\n[2/6] Running simulations...")

@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 import subprocess
 
-def run_classification(realali, simali, output, config, tools):
+def run_classification(realali, simali, output, config, tools):  
     """
     Exécute la pipeline de classification en préparant la configuration JSON.
     Args:
