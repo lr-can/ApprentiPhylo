@@ -180,7 +180,7 @@ class BppSimulator:
             None
         """
         start = time.time()
-        alignments = sorted(Path(self.align_dir).glob("clean_data/*.fasta"))
+        alignments = sorted(Path(self.align_dir).glob("*.fasta"))
         n = len(alignments)
         print(f"  > Found {n} alignments to simulate.\n")
 

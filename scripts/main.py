@@ -288,7 +288,7 @@ python3 scripts/main.py simulate \
  --pre-output results/preprocessed/clean_data \
  --minseq 5 --maxsites 2000 --minsites 100 \
  --alphabet aa \
- --align results/preprocessed/clean_data \
+ --align results/preprocessed \
  --tree data/prot_mammals/trees \
  --config backup/config/bpp/aa/WAG_frequencies.bpp \
  --sim-output results/simulations \
