@@ -1,0 +1,5 @@
+2025-11-05 10:43:42   --- Preprocessing data ---
+2025-11-05 10:43:42   --- Start training ---
+2025-11-05 10:43:42   Number of cross validation folds: 50
+2025-11-05 10:43:42   Shuffle data: True
+2025-11-05 10:43:42   Scale features: True

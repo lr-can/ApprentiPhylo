@@ -1,0 +1,40 @@
+{
+    "real_path": "results/preprocessed",
+    "sim_path": "results/simulations",
+    "out_path": "results/classification",
+    "tokenizer": "AA_TOKENIZER",
+    "classifiers": [
+        {
+            "classifier": "LogisticRegressionClassifier",
+            "args": {
+                "scale_features": true,
+                "cv": 50,
+                "shuffle_data": true
+            }
+        },
+        {
+            "classifier": "DenseMsaClassifier",
+            "args": {
+                "batch_size": 64,
+                "max_epochs": 500,
+                "early_stopping_patience": 20
+            }
+        },
+        {
+            "classifier": "DenseSiteClassifier",
+            "args": {
+                "batch_size": 64,
+                "max_epochs": 500,
+                "early_stopping_patience": 20
+            }
+        },
+        {
+            "classifier": "AACnnClassifier",
+            "args": {
+                "batch_size": 64,
+                "max_epochs": 500,
+                "early_stopping_patience": 20
+            }
+        }
+    ]
+}
