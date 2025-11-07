@@ -285,10 +285,10 @@ if __name__ == "__main__":
 """
 python3 scripts/main.py simulate \
  --pre-input data/prot_mammals \
- --pre-output results/preprocessed/clean_data \
+ --pre-output results/preprocessed  \
  --minseq 5 --maxsites 2000 --minsites 100 \
  --alphabet aa \
- --align results/preprocessed \
+ --align results/preprocessed/clean_data \
  --tree data/prot_mammals/trees \
  --config backup/config/bpp/aa/WAG_frequencies.bpp \
  --sim-output results/simulations \

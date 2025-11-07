@@ -1,1 +1,1 @@
-{"n_params": 2401, "best_epoch": 500, "training_time": 31, "val_loss": 7.33870817998121e-06, "val_acc": 1.0, "f1_score": 1.0}
+{"n_params": 2401, "best_epoch": 6, "training_time": 3, "val_loss": 0.6917959701183231, "val_acc": 0.47093021869659424, "f1_score": 0.0}
