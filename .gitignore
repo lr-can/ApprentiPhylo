@@ -10,3 +10,4 @@ bpp3/*
 backup/__pycache__/
 .venv/
 *venv*/
+_log*/
