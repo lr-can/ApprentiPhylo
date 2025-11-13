@@ -2,8 +2,8 @@
 main.py
 ========
 Pipeline principal scindé en deux étapes indépendantes :
-1️⃣ Simulation (prétraitement → simulation → arbres → métriques)
-2️⃣ Classification (classification → analyse des résultats → rapport)
+Simulation (prétraitement → simulation → arbres → métriques)
+Classification (classification → analyse des résultats → rapport)
 
 Chaque commande est autonome et logge ses étapes dans logs/pipeline_log.csv.
 """
@@ -22,6 +22,7 @@ from compute_tree import ComputingTrees
 from phylo_metrics import tree_summary
 from classification import run_classification
 from analyse_classif import process_classification_results
+from fix_logreg_history import generate_logreg_train_history
 
 
 # === LOGGING ===
@@ -64,7 +65,7 @@ def simulate_cmd(args):
         pr.remove_ambig_sites("clean")
 
         clean_align_dir = Path(args.align)
-        print(f"✅ Clean alignments ready in: {clean_align_dir}")
+        print(f"Clean alignments ready in: {clean_align_dir}")
 
         print("\n[2/4] Running simulations...")
         config_file = args.config[0] if isinstance(args.config, list) else args.config
@@ -91,14 +92,14 @@ def simulate_cmd(args):
             for tree_file in Path(args.tree_output).glob("*.nw*"):
                 m = tree_summary(tree_file)
                 writer.writerow({"tree": tree_file.name, **m})
-        print(f"✅ Metrics saved to {out_csv}")
+        print(f"Metrics saved to {out_csv}")
 
         log_step("simulate_pipeline", vars(args), "success", global_start)
-        print("\n🎉 Simulation pipeline completed successfully!")
+        print("\nSimulation pipeline completed successfully!")
 
     except Exception as e:
         log_step("simulate_pipeline", vars(args), f"error: {e}", global_start)
-        print(f"\n❌ Simulation pipeline failed: {e}")
+        print(f"\nSimulation pipeline failed: {e}")
         raise
 
 
@@ -114,17 +115,19 @@ def classify_cmd(args):
             config=args.config,
             tools=args.tools
         )
-        print("✅ Classification terminée.")
+        print("Classification terminée.")
+
+        generate_logreg_train_history(args.output)
 
         print("\n[2/3] Traitement des résultats et génération du rapport...")
         process_classification_results(base_dir=args.output, output_pdf=args.report_output)
 
         log_step("classify_pipeline", vars(args), "success", start)
-        print("\n🎉 Classification pipeline completed successfully!")
+        print("\nClassification pipeline completed successfully!")
 
     except Exception as e:
         log_step("classify_pipeline", vars(args), f"error: {e}", start)
-        print(f"\n❌ Classification pipeline failed: {e}")
+        print(f"\nClassification pipeline failed: {e}")
         raise
 
 
