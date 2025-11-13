@@ -11,3 +11,10 @@ backup/__pycache__/
 .venv/
 *venv*/
 _log*/
+.python-version
+Python-3.12.2/
+bpp/
+cmake-3.29.6-linux-x86_64/
+eigen-3.3.9/
+pyproject.toml
+uv.lock
