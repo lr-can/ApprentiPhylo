@@ -16,7 +16,7 @@ import pandas as pd
 from Bio import SeqIO, Phylo
 from pathlib import Path
 from datetime import datetime
-from phylo_metrics import tree_summary
+from scripts.phylo_metrics import tree_summary
 
 
 def generate_pdf_report(simulation_folder, output_dir):

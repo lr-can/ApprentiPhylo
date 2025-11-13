@@ -131,4 +131,37 @@ class LogisticRegressionClassifier:
         )
         preds.write_parquet(preds_path)
 
+        # NEW: create a synthetic train_history.parquet for reporting
+        try:
+            import pandas as pd
+
+            # Création d'un historique factice basé sur les résultats de cross-validation
+            train_history = pd.DataFrame({
+                "epoch": range(1, self.cv + 1),
+                "train_loss": [None] * self.cv,  # pas applicable ici
+                "val_loss": [1 - float(a) for a in accuracies],  # "erreur" = 1 - accuracy
+                "val_acc": [float(a) for a in accuracies],
+                "f1": [float(f) for f in f1s],
+                "lr": [None] * self.cv,
+                "best": [
+                    True if i == int(max(enumerate(accuracies), key=lambda x: x[1])[0]) else False
+                    for i in range(self.cv)
+                ],
+            }).astype({
+                "epoch": "int32",
+                "train_loss": "float32",
+                "val_loss": "float32",
+                "val_acc": "float32",
+                "f1": "float32",
+                "best": "bool",
+            })
+
+            history_path = self.out_path / "train_history.parquet"
+            train_history.to_parquet(history_path)
+            self.logger.log(f"Train history saved to {history_path}")
+
+        except Exception as e:
+            self.logger.log(f"Could not create synthetic train_history.parquet: {e}")
+
+
         return cv_result
