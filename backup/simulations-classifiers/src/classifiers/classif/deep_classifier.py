@@ -214,3 +214,81 @@ class DeepClassifier(ABC):  # noqa: B024
             device=self.device,  # type: ignore
         )
         training.train()
+
+    @torch.no_grad()
+    def predict(self, *, model_path: str | Path):
+        """
+        Predict class probabilities for all alignments using the trained model.
+        """
+
+        import polars as pl
+
+        model_path = Path(model_path)
+        if not model_path.exists():
+            raise FileNotFoundError(f"Model not found: {model_path}")
+
+        # --- Load model ---
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+        self.model.to(self.device)
+        self.model.eval()
+
+        if self.dataset is None:
+            raise RuntimeError("Classifier has no dataset. Did you forget to build it?")
+
+        loader = DataLoader(
+            self.dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            collate_fn=pad_collate_fn if self.batch_pad_sequences else None,
+        )
+
+        filenames = []
+        prob_real_list = []
+        pred_class_list = []
+
+        # Ensure filenames exist even if dataset does not provide them
+        dataset_keys = getattr(self.dataset, "keys", None)
+        if dataset_keys is not None:
+            dataset_keys = list(dataset_keys)
+        else:
+            dataset_keys = [f"sim_{i}" for i in range(len(self.dataset))]
+
+        idx_offset = 0
+
+        for batch in loader:
+            # Accept 2 or 3 outputs
+            if len(batch) == 3:
+                batch_aligns, batch_labels, batch_names = batch
+            else:
+                batch_aligns, batch_labels = batch
+                batch_names = dataset_keys[idx_offset : idx_offset + len(batch_aligns)]
+
+            idx_offset += len(batch_aligns)
+
+            batch_aligns = batch_aligns.to(self.device)
+
+            logits = self.model(batch_aligns)
+
+            # --- Case: model outputs 1 logit → binary sigmoid classifier ---
+            if logits.shape[1] == 1:
+                prob_real = torch.sigmoid(logits[:, 0]).cpu().numpy()
+                pred_class = (prob_real >= 0.5).astype(int)
+
+            # --- Case: model outputs 2 logits → softmax ---
+            else:
+                probs = torch.softmax(logits, dim=1)
+                prob_real = probs[:, 1].cpu().numpy()
+                pred_class = probs.argmax(dim=1).cpu().numpy()
+
+            filenames.extend(batch_names)
+            prob_real_list.extend(prob_real)
+            pred_class_list.extend(pred_class)
+
+        df = pl.DataFrame({
+            "filename": filenames,
+            "prob_real": prob_real_list,
+            "pred_class": pred_class_list,
+        })
+
+        return df
+

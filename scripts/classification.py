@@ -1,26 +1,27 @@
 """
 classification.py
 ==================
-Compare et classe les alignements simulés vs réels.
-Permet d’évaluer la fidélité des simulations par rapport aux données expérimentales.
-Utilise une configuration externe et des outils de scoring/statistiques.
+Creates the config.json for the simulations-classifiers pipeline
+and launches it (single iteration or two-iteration mode).
 """
 
 import json
 from pathlib import Path
 import subprocess
 
-def run_classification(realali, simali, output, config, tools):  
+
+def run_classification(realali, simali, output, config, tools, two_iterations=False, threshold=0.5):
     """
-    Exécute la pipeline de classification en préparant la configuration JSON.
+    Prépare le fichier de configuration JSON et lance le pipeline.
+
     Args:
         realali (str): Chemin vers les alignements réels.
         simali (str): Chemin vers les alignements simulés.
-        output (str): Dossier de sortie pour les résultats de classification.
+        output (str): Dossier de sortie pour les résultats.
         config (str): Chemin vers le fichier de configuration template JSON.
-        tools (str): Chemin vers le dossier des outils nécessaires.
-    Returns:
-        None
+        tools (str): Dossier des outils nécessaires.
+        two_iterations (bool): Si True, active Run1 + Run2 automatiquement.
+        threshold (float): Seuil de décision pour flagger les simulations "réelles".
     """
     output = Path(output)
     real_ali = Path(realali)
@@ -29,26 +30,25 @@ def run_classification(realali, simali, output, config, tools):
 
     output.mkdir(parents=True, exist_ok=True)
 
-    # Charger le fichier de config template
-    input_file = Path(config)
-    if not input_file.exists():
-        raise FileNotFoundError(f"Classification config not found: {input_file}")
+    # Charger le template
+    template_path = Path(config)
+    if not template_path.exists():
+        raise FileNotFoundError(f"Classification config not found: {template_path}")
 
-    config_path = output / "config.json"
+    with open(template_path, "r") as f:
+        data = json.load(f)
 
-    with open(input_file, 'r') as file:
-        data = json.load(file)
-
-    # Mise à jour du JSON avec les chemins réels
+    # Injecter les chemins réels dans le config
     data["out_path"] = str(output)
     data["real_path"] = str(real_ali)
     data["sim_path"] = str(sim_ali)
 
-    # Sauvegarde du nouveau fichier de config
-    with open(config_path, 'w') as file:
-        json.dump(data, file, indent=4)
+    # Sauvegarder le config.json final
+    final_config = output / "config.json"
+    with open(final_config, "w") as f:
+        json.dump(data, f, indent=4)
 
-    # Exécution du pipeline
+    # Déterminer la commande
     pipeline_script = tools / "simulations-classifiers" / "src" / "classifiers" / "pipeline.py"
 
     if not pipeline_script.exists():
@@ -57,9 +57,16 @@ def run_classification(realali, simali, output, config, tools):
     command = [
         "uv", "run", "python",
         str(pipeline_script),
-        "--config", str(config_path),
+        "--config", str(final_config),
+        "--threshold", str(threshold),
         "--no-progress"
     ]
 
-    print(f"\n🚀 Launching classification pipeline: {pipeline_script}")
+    # Activer run1 + run2
+    if two_iterations:
+        command.append("--two-iterations")
+
+    print("\n🚀 Launching classification pipeline…")
+    print(f"    → script: {pipeline_script}")
+    print(f"    → mode: {'TWO-ITERATIONS' if two_iterations else 'RUN1 ONLY'}")
     subprocess.run(command, check=True)

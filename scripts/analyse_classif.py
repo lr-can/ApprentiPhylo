@@ -121,10 +121,16 @@ def generate_pdf_report(train_df, pred_df, plots, output_pdf):
 
 
 
-def process_classification_results(base_dir="results/classification", output_pdf="results/classification/report.pdf"):
+def process_classification_results(base_dir="results/classification", output_pdf="results/classification/report.pdf", iteration=1):
     """
     Main function: load, concatenate, trace and export everything in a PDF.
     Easily callable from main.py.
+    Args:
+        base_dir (str): Base directory where classification results are stored.
+        output_pdf (str): Path to the output PDF report.
+        iteration (int): Iteration number (for future extensions).
+    Returns:
+        None
     """
 
     base_dir = Path(base_dir)
@@ -167,6 +173,7 @@ def process_classification_results(base_dir="results/classification", output_pdf
     print("\nGénération des courbes d'apprentissage...")
     plots = plot_learning_curves(train_df, output_dir)
 
+    print(f"[{3*iteration}/6] PDF rendering...")
     # Génération du PDF
     generate_pdf_report(train_df, pred_df, plots, output_pdf)
 

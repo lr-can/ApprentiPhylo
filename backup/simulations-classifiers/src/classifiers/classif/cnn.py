@@ -5,27 +5,20 @@ CNN based classifiers.
 from classifiers.classif.deep_classifier import DeepClassifier
 from classifiers.classif.models.cnn_models import AAConvNet, DNAConvNet
 from classifiers.classif.torch_datasets import SiteDataset
-from classifiers.data.data import Data, SiteCompositionData
+from classifiers.data.data import Data
+from classifiers.data import preprocessing_fn
 
 
 class CnnClassifier(DeepClassifier):
     """
-    Base Convolutional Neural Network (CNN) classifier.
+    Base CNN classifier.
+    NOTE: We NO LONGER replace self.data with SiteCompositionData.
+          Instead, we compute site-composition matrices ON THE FLY
+          and build self.dataset accordingly.
 
-    This class is not intended to be instantiated.
-
-    Parameters
-    ----------
-    data : Data
-        The input data for classification.
-    max_width : int or None, optional
-        The maximum width of the input data. Default is None.
-    learning_rate : float, optional
-        The learning rate for the optimizer. Default is 0.01.
-    *args : tuple
-        Additional positional arguments to be passed to the parent class.
-    **kwargs : dict
-        Additional keyword arguments to be passed to the parent class.
+          This keeps DeepClassifier.predict() WORKING:
+              -> self.data is still a Data()
+              -> self.data.dataset exists
     """
 
     def __init__(
@@ -35,64 +28,68 @@ class CnnClassifier(DeepClassifier):
 
         self.max_width = max_width
 
-        self.data = SiteCompositionData(data, max_width=self.max_width)
-        self.dataset = SiteDataset(self.data.aligns, self.data.labels)
+        # ---------------------------------------------------------------------
+        # 1) On clone les alignements de Data avant transformation
+        # ---------------------------------------------------------------------
+        aligns = data.aligns
+        labels = data.labels
 
-        self.n_sites, self.n_features = next(iter(self.data.aligns.values())).shape
+        # 2) On applique la transformation site-composition (ancienne SiteCompositionData)
+        site_aligns = preprocessing_fn.site_composition_preprocessing(
+            aligns,
+            data.n_tokens,
+        )
+
+        # 3) On filtre en width si demandé
+        if self.max_width is not None:
+            site_aligns = {
+                k: v for k, v in site_aligns.items()
+                if v.shape[0] <= self.max_width
+            }
+            labels = {k: labels[k] for k in site_aligns.keys()}
+
+        # 4) Construction du vrai dataset CNN
+        self.dataset = SiteDataset(site_aligns, labels)
+
+        # 5) On expose les infos pour les modèles
+        any_align = next(iter(site_aligns.values()))
+        self.n_sites, self.n_features = any_align.shape
+
+        # DeepClassifier.train() utilisera self.dataset correctement
+        # DeepClassifier.predict() ne l’utilise PAS → ok
 
 
 class AACnnClassifier(CnnClassifier):
     """
-    A CNN classifier for amino acid site composition data.
-
-    Parameters
-    ----------
-    data : Data
-        The input data for classification.
-    max_width : int or None, optional
-        The maximum width of the input data. Default is None.
-    *args : tuple
-        Additional positional arguments to be passed to the parent class.
-    **kwargs : dict
-        Additional keyword arguments to be passed to the parent class.
-
-    Attributes
-    ----------
-    model : AAConvNet
-        The CNN model for amino acid sequence classification.
+    CNN for amino acid composition.
     """
 
     def __init__(self, data: Data, max_width: int | None = None, *args, **kwargs):
-        kernel_size = kwargs.pop('kernel_size', 1)
+        kernel_size = kwargs.pop("kernel_size", 1)
         self.kernel_size = kernel_size
+
         super().__init__(data, max_width=max_width, *args, **kwargs)
-        self.model = AAConvNet(n_features=self.n_features, n_sites=self.dataset.max_length, kernel_size=kernel_size)
+
+        self.model = AAConvNet(
+            n_features=self.n_features,
+            n_sites=self.dataset.max_length,
+            kernel_size=kernel_size,
+        )
 
 
 class DNACnnClassifier(CnnClassifier):
     """
-    A CNN classifier for DNA site composition data.
-
-    Parameters
-    ----------
-    data : Data
-        The input data for classification.
-    max_width : int or None, optional
-        The maximum width of the input data. Default is None.
-    *args : tuple
-        Additional positional arguments to be passed to the parent class.
-    **kwargs : dict
-        Additional keyword arguments to be passed to the parent class.
-
-    Attributes
-    ----------
-    model : DNAConvNet
-        The CNN model for DNA sequence classification.
+    CNN for DNA composition.
     """
 
     def __init__(self, data: Data, max_width: int | None = None, *args, **kwargs):
-        kernel_size = kwargs.pop('kernel_size', 3)
+        kernel_size = kwargs.pop("kernel_size", 3)
         self.kernel_size = kernel_size
+
         super().__init__(data, max_width=max_width, *args, **kwargs)
 
-        self.model = DNAConvNet(n_features=self.n_features, n_sites=self.dataset.max_length, kernel_size=kernel_size)
+        self.model = DNAConvNet(
+            n_features=self.n_features,
+            n_sites=self.dataset.max_length,
+            kernel_size=kernel_size,
+        )
