@@ -1,20 +1,17 @@
 """
-main.py
+main2.py
 ========
-Pipeline principal scindé en deux étapes indépendantes :
-Simulation (prétraitement → simulation → arbres → métriques)
-Classification (classification → analyse des résultats → rapport)
+Unified pipeline :
+- Simulation (preprocess → simulate → trees → metrics)
+- Classification (run1 or run1+run2 depending on user option)
 
-Chaque commande est autonome et logge ses étapes dans logs/pipeline_log.csv.
+Logging goes into logs/pipeline_log.csv.
 """
 
 import argparse
 import time
 import csv
 from pathlib import Path
-import pandas as pd
-import matplotlib.pyplot as plt
-from fpdf import FPDF
 
 from preprocess import Preprocess
 from simulation import BppSimulator
@@ -45,7 +42,7 @@ def log_step(step_name, args_dict, status, start_time):
         })
 
 
-# === ÉTAPE 1 : SIMULATION ===
+# === SIMULATION ===
 def simulate_cmd(args):
     global_start = time.time()
 
@@ -103,27 +100,39 @@ def simulate_cmd(args):
         raise
 
 
-# === ÉTAPE 2 : CLASSIFICATION ===
+# === CLASSIFICATION ===
 def classify_cmd(args):
     start = time.time()
+
     try:
-        print("\n[1/3] Running classification...")
+        print("\n[1/3] Running classification pipeline...")
+        
         run_classification(
             realali=args.real_align,
             simali=args.sim_align,
             output=args.output,
             config=args.config,
-            tools=args.tools
+            tools=args.tools,
+            two_iterations=args.two_iterations,
+            threshold=args.threshold
         )
-        print("Classification terminée.")
 
-        generate_logreg_train_history(args.output)
+        print("\nClassification pipeline (iterations) completed.")
 
-        print("\n[2/3] Traitement des résultats et génération du rapport...")
-        process_classification_results(base_dir=args.output, output_pdf=args.report_output)
+        # Optional post-processing (only if user requests a report)
+        if args.report_output:
+            print("\n[2/3] Generating logistic regression history...")
+            generate_logreg_train_history(args.output)
+
+            print("\n[3/3] Generating final report PDF...")
+            process_classification_results(
+                base_dir=args.output,
+                output_pdf=args.report_output
+            )
+            print("Report generated.")
 
         log_step("classify_pipeline", vars(args), "success", start)
-        print("\nClassification pipeline completed successfully!")
+        print("\nClassification stage completed successfully!")
 
     except Exception as e:
         log_step("classify_pipeline", vars(args), f"error: {e}", start)
@@ -133,17 +142,18 @@ def classify_cmd(args):
 
 # === MAIN ENTRYPOINT ===
 def main():
-    parser = argparse.ArgumentParser(description="Unified bioinformatics pipeline (2-step version).")
+    parser = argparse.ArgumentParser(description="Unified bioinformatics pipeline.")
+
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # --- SIMULATE ---
-    p_sim = subparsers.add_parser("simulate", help="Run preprocessing, simulation, tree, and metrics.")
+    p_sim = subparsers.add_parser("simulate")
     p_sim.add_argument("--pre-input", required=True)
     p_sim.add_argument("--pre-output", required=True)
     p_sim.add_argument("--minseq", type=int, required=True)
     p_sim.add_argument("--maxsites", type=int, required=True)
     p_sim.add_argument("--minsites", type=int, required=True)
-    p_sim.add_argument("--alphabet", choices=["aa", "dna"], required=True)
+    p_sim.add_argument("--alphabet", choices=["aa","dna"], required=True)
     p_sim.add_argument("--align", "-a", required=True)
     p_sim.add_argument("--tree", "-t", required=True)
     p_sim.add_argument("--config", "-c", required=True)
@@ -154,13 +164,15 @@ def main():
     p_sim.set_defaults(func=simulate_cmd)
 
     # --- CLASSIFY ---
-    p_cls = subparsers.add_parser("classify", help="Run classification and report generation.")
+    p_cls = subparsers.add_parser("classify")
     p_cls.add_argument("--real-align", required=True)
     p_cls.add_argument("--sim-align", required=True)
     p_cls.add_argument("--output", required=True)
     p_cls.add_argument("--config", required=True)
     p_cls.add_argument("--tools", required=True)
-    p_cls.add_argument("--report-output", required=True)
+    p_cls.add_argument("--report-output", required=False, help="Optional PDF report output path")
+    p_cls.add_argument("--two-iterations", action="store_true", help="Enable Run1 + Run2 refinement")
+    p_cls.add_argument("--threshold", type=float, default=0.5, help="Threshold to classify sims as REAL")
     p_cls.set_defaults(func=classify_cmd)
 
     args = parser.parse_args()
@@ -171,29 +183,49 @@ if __name__ == "__main__":
     main()
 
 
-# === COMMANDE QUI MARCHE ===
+# === COMMANDES EXEMPLES (TEST QUICK-START) ===
 """
+# --- SIMULATION ---
 python3 scripts/main2.py simulate \
- --pre-input data/prot_mammals \
- --pre-output results/preprocessed \
- --minseq 5 --maxsites 2000 --minsites 100 \
- --alphabet aa \
- --align results/preprocessed/clean_data \
- --tree data/prot_mammals/trees \
- --config backup/config/bpp/aa/WAG_frequencies.bpp \
- --sim-output results/simulations \
- --ext_rate 0.3 \
- --tree-output results/trees \
- --metrics-output results/metrics
-"""
+    --pre-input data/prot_mammals \
+    --pre-output results/preprocessed \
+    --minseq 5 --maxsites 2000 --minsites 100 \
+    --alphabet aa \
+    --align results/preprocessed/clean_data \
+    --tree data/prot_mammals/trees \
+    --config backup/config/bpp/aa/WAG_frequencies.bpp \
+    --sim-output results/simulations \
+    --ext_rate 0.3 \
+    --tree-output results/trees \
+    --metrics-output results/metrics
 
 
-"""
+# --- CLASSIFY : RUN 1 SEULEMENT ---
 python3 scripts/main2.py classify \
- --real-align results/preprocessed/clean_data \
- --sim-align results/simulations \
- --output results/classification \
- --config backup/config_template.json \
- --tools backup/ \
- --report-output results/classification/final_report.pdf
+    --real-align results/preprocessed/clean_data \
+    --sim-align results/simulations \
+    --output results/classification \
+    --config backup/config_template.json \
+    --tools backup/
+
+
+# --- CLASSIFY : RUN 1 + RUN 2 (refinement) ---
+python3 scripts/main2.py classify \
+    --real-align results/preprocessed/clean_data \
+    --sim-align results/simulations \
+    --output results/classification \
+    --config backup/config_template.json \
+    --tools backup/ \
+    --two-iterations
+
+
+# --- CLASSIFY : RUN 1 + RUN 2 + PDF REPORT ---
+python3 scripts/main2.py classify \
+    --real-align results/preprocessed/clean_data \
+    --sim-align results/simulations \
+    --output results/classification \
+    --config backup/config_template.json \
+    --tools backup/ \
+    --two-iterations \
+    --report-output results/classification/final_report.pdf
 """

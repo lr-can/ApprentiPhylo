@@ -93,6 +93,10 @@ class Data:
         default_logger.info(f"Limiting alignments height to {height}")
         ids = [k for k in self.aligns.keys() if self.aligns[k].shape[0] > height]
         self.filter_aligns_by_ids(ids)
+        
+    def num_classes(self):
+        return len(set(self.labels.values()))
+
 
 
 class SequencesData:

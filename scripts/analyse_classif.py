@@ -2,22 +2,48 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 from fpdf import FPDF
+import shutil
+import numpy as np
 
 
 def load_and_concat_parquets(base_dir, classifiers, filename):
     """
     Load and concatenate the files . parquet of a given type for all classifiers.
+    Cherche dans run_1/ et run_2/ et aussi directement dans les dossiers des classifieurs.
     """
 
     dfs = []
     for clf in classifiers:
-        path = base_dir / clf / filename
-        if path.exists():
-            df = pd.read_parquet(path)
-            df["classifier"] = clf
-            dfs.append(df)
-        else:
-            print(f"Fichier manquant : {path}")
+        # Chercher dans run_1 et run_2 d'abord
+        found = False
+        for run_dir in ["run_1", "run_2"]:
+            path = base_dir / run_dir / clf / filename
+            if path.exists():
+                df = pd.read_parquet(path)
+                df["classifier"] = clf
+                if "run" not in df.columns:
+                    df["run"] = run_dir
+                elif "run" in df.columns and df["run"].isna().all():
+                    df["run"] = run_dir
+                dfs.append(df)
+                found = True
+                # Copier aussi vers le dossier du classifieur pour compatibilité
+                clf_dir = base_dir / clf
+                clf_dir.mkdir(exist_ok=True)
+                shutil.copy(path, clf_dir / filename)
+                break
+        
+        # Si pas trouvé dans run_1/run_2, chercher directement dans le dossier du classifieur
+        if not found:
+            path = base_dir / clf / filename
+            if path.exists():
+                df = pd.read_parquet(path)
+                df["classifier"] = clf
+                if "run" not in df.columns:
+                    df["run"] = "unknown"
+                dfs.append(df)
+            else:
+                print(f"Fichier manquant : {base_dir}/(run_1|run_2)/{clf}/{filename}")
     if dfs:
         return pd.concat(dfs, ignore_index=True)
     else:
@@ -31,6 +57,11 @@ def plot_learning_curves(df, output_dir):
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     plots = []
+
+    # Vérifier si le DataFrame est vide ou n'a pas la colonne "classifier"
+    if df.empty or "classifier" not in df.columns:
+        print("Aucune donnée d'entraînement disponible pour générer les courbes d'apprentissage.")
+        return plots
 
     for clf, subdf in df.groupby("classifier"):
         plt.figure()
@@ -71,6 +102,155 @@ def plot_learning_curves(df, output_dir):
     return plots
 
 
+def plot_roc_curves(base_dir, output_dir):
+    """
+    Génère les courbes ROC à partir des fichiers CSV exportés par le pipeline,
+    ou calcule les courbes ROC à partir des fichiers best_preds.parquet si les CSV n'existent pas.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plots = []
+    
+    base_dir = Path(base_dir)
+    classifiers = [
+        "AACnnClassifier",
+        "DenseMsaClassifier",
+        "DenseSiteClassifier",
+        "LogisticRegressionClassifier"
+    ]
+    
+    # D'abord, chercher les fichiers ROC CSV existants
+    roc_csv_found = set()
+    for run_dir in ["run_1", "run_2"]:
+        roc_dir = base_dir / run_dir / "roc_data"
+        if not roc_dir.exists():
+            continue
+            
+        for roc_file in roc_dir.glob("*_roc.csv"):
+            try:
+                df = pd.read_csv(roc_file)
+                
+                if df.empty or "fpr" not in df.columns or "tpr" not in df.columns:
+                    continue
+                
+                classifier = roc_file.stem.replace("_roc", "")
+                roc_csv_found.add((classifier, run_dir))
+                
+                plt.figure(figsize=(8, 6))
+                plt.plot(df["fpr"], df["tpr"], linewidth=2, label=f"{classifier} ({run_dir})")
+                plt.plot([0, 1], [0, 1], 'k--', linewidth=1, label="Random")
+                plt.xlabel("False Positive Rate")
+                plt.ylabel("True Positive Rate")
+                plt.title(f"Courbe ROC - {classifier} ({run_dir})")
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                
+                # Calculer l'AUC si possible
+                if "tpr" in df.columns and "fpr" in df.columns:
+                    try:
+                        from sklearn.metrics import auc
+                        auc_score = auc(df["fpr"], df["tpr"])
+                        plt.text(0.6, 0.2, f"AUC = {auc_score:.3f}", 
+                                bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+                    except:
+                        pass
+                
+                plot_path = output_dir / f"{classifier}_{run_dir}_roc.png"
+                plt.savefig(plot_path, bbox_inches="tight", dpi=150)
+                plt.close()
+                plots.append(plot_path)
+            except Exception as e:
+                print(f"Erreur lors de la génération de la courbe ROC pour {roc_file}: {e}")
+                continue
+    
+    # Ensuite, calculer les courbes ROC à partir de best_preds.parquet pour les classifieurs manquants
+    for classifier in classifiers:
+        for run_dir in ["run_1", "run_2"]:
+            # Skip si on a déjà un CSV ROC pour ce classifieur
+            if (classifier, run_dir) in roc_csv_found:
+                continue
+            
+            preds_path = base_dir / run_dir / classifier / "best_preds.parquet"
+            if not preds_path.exists():
+                continue
+            
+            try:
+                preds_df = pd.read_parquet(preds_path)
+                
+                if preds_df.empty:
+                    continue
+                
+                # Identifier les colonnes de probabilité et de label
+                prob_col = None
+                if "prob_real" in preds_df.columns:
+                    prob_col = "prob_real"
+                elif "prob" in preds_df.columns:
+                    prob_col = "prob"
+                else:
+                    print(f"Pas de colonne de probabilité trouvée pour {classifier} ({run_dir})")
+                    continue
+                
+                label_col = None
+                if "target" in preds_df.columns:
+                    label_col = "target"
+                elif "true_label" in preds_df.columns:
+                    label_col = "true_label"
+                else:
+                    print(f"Pas de colonne de label trouvée pour {classifier} ({run_dir})")
+                    continue
+                
+                # Extraire les données
+                y_score = preds_df[prob_col].values
+                y_true = preds_df[label_col].values
+                
+                # Vérifier qu'on a les deux classes
+                unique_labels = np.unique(y_true)
+                if len(unique_labels) < 2:
+                    print(f"Seulement {len(unique_labels)} classe(s) trouvée(s) pour {classifier} ({run_dir}), impossible de calculer ROC")
+                    continue
+                
+                # Calculer la courbe ROC
+                from sklearn.metrics import roc_curve, auc
+                # pos_label=1 pour LABEL_SIMULATED (selon le code du pipeline)
+                fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label=1)
+                
+                # Ajouter le point (0,0) pour complétude
+                fpr = np.concatenate([[0.0], fpr])
+                tpr = np.concatenate([[0.0], tpr])
+                
+                # Calculer l'AUC
+                auc_score = auc(fpr, tpr)
+                
+                # Générer le plot
+                plt.figure(figsize=(8, 6))
+                plt.plot(fpr, tpr, linewidth=2, label=f"{classifier} ({run_dir})")
+                plt.plot([0, 1], [0, 1], 'k--', linewidth=1, label="Random")
+                plt.xlabel("False Positive Rate")
+                plt.ylabel("True Positive Rate")
+                plt.title(f"Courbe ROC - {classifier} ({run_dir})")
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                plt.text(0.6, 0.2, f"AUC = {auc_score:.3f}", 
+                        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+                
+                plot_path = output_dir / f"{classifier}_{run_dir}_roc.png"
+                plt.savefig(plot_path, bbox_inches="tight", dpi=150)
+                plt.close()
+                plots.append(plot_path)
+                
+                print(f"Courbe ROC générée pour {classifier} ({run_dir}) à partir de best_preds.parquet")
+                
+            except Exception as e:
+                print(f"Erreur lors de la génération de la courbe ROC pour {classifier} ({run_dir}): {e}")
+                continue
+    
+    if not plots:
+        print("Aucune courbe ROC disponible.")
+    else:
+        print(f"{len(plots)} courbe(s) ROC générée(s).")
+    
+    return plots
+
+
 def generate_pdf_report(train_df, pred_df, plots, output_pdf):
     """
     Generate a PDF report combining:
@@ -95,14 +275,20 @@ def generate_pdf_report(train_df, pred_df, plots, output_pdf):
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 10, safe_text("Aperçu des données d'entraînement :"), ln=True)
     pdf.set_font("Helvetica", size=10)
-    pdf.multi_cell(0, 5, safe_text(train_df.head().to_string(index=False)))
+    if train_df.empty:
+        pdf.multi_cell(0, 5, safe_text("Aucune donnée d'entraînement disponible."))
+    else:
+        pdf.multi_cell(0, 5, safe_text(train_df.head().to_string(index=False)))
     pdf.ln(8)
 
     # Section : Best predictions
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 10, safe_text("Aperçu des meilleures prédictions :"), ln=True)
     pdf.set_font("Helvetica", size=10)
-    pdf.multi_cell(0, 5, safe_text(pred_df.head().to_string(index=False)))
+    if pred_df.empty:
+        pdf.multi_cell(0, 5, safe_text("Aucune prédiction disponible."))
+    else:
+        pdf.multi_cell(0, 5, safe_text(pred_df.head().to_string(index=False)))
     pdf.ln(8)
 
     # Section : Courbes d’apprentissage
@@ -121,10 +307,16 @@ def generate_pdf_report(train_df, pred_df, plots, output_pdf):
 
 
 
-def process_classification_results(base_dir="results/classification", output_pdf="results/classification/report.pdf"):
+def process_classification_results(base_dir="results/classification", output_pdf="results/classification/report.pdf", iteration=1):
     """
     Main function: load, concatenate, trace and export everything in a PDF.
     Easily callable from main.py.
+    Args:
+        base_dir (str): Base directory where classification results are stored.
+        output_pdf (str): Path to the output PDF report.
+        iteration (int): Iteration number (for future extensions).
+    Returns:
+        None
     """
 
     base_dir = Path(base_dir)
@@ -146,27 +338,39 @@ def process_classification_results(base_dir="results/classification", output_pdf
     train_concat_path = base_dir / "all_train_history.parquet"
     pred_concat_path = base_dir / "all_best_preds.parquet"
 
-    #  Forcer un typage homogène avant écriture Parquet
-    if "best" in train_df.columns:
-    # 🔍 Convertir tout en texte, puis mapper vers bool
-        train_df["best"] = (
-            train_df["best"]
-            .astype(str)  # tout en texte pour éviter les erreurs
-            .str.strip()
-            .str.lower()
-            .map({"true": True, "false": False, "1": True, "0": False, "nan": pd.NA})
-            .astype("boolean")
-        )
+    # Sauvegarder seulement si les DataFrames ne sont pas vides
+    if not train_df.empty:
+        #  Forcer un typage homogène avant écriture Parquet
+        if "best" in train_df.columns:
+        # 🔍 Convertir tout en texte, puis mapper vers bool
+            train_df["best"] = (
+                train_df["best"]
+                .astype(str)  # tout en texte pour éviter les erreurs
+                .str.strip()
+                .str.lower()
+                .map({"true": True, "false": False, "1": True, "0": False, "nan": pd.NA})
+                .astype("boolean")
+            )
+        train_df.to_parquet(train_concat_path)
+        print(f"Table sauvegardée : {train_concat_path}")
+    else:
+        print("Aucune donnée d'entraînement à sauvegarder.")
 
-
-    train_df.to_parquet(train_concat_path)
-    pred_df.to_parquet(pred_concat_path)
-    print(f"Tables sauvegardées dans :\n - {train_concat_path}\n - {pred_concat_path}")
+    if not pred_df.empty:
+        pred_df.to_parquet(pred_concat_path)
+        print(f"Table sauvegardée : {pred_concat_path}")
+    else:
+        print("Aucune prédiction à sauvegarder.")
 
     # Génération des plots
     print("\nGénération des courbes d'apprentissage...")
     plots = plot_learning_curves(train_df, output_dir)
+    
+    print("\nGénération des courbes ROC...")
+    roc_plots = plot_roc_curves(base_dir, output_dir)
+    plots.extend(roc_plots)
 
+    print(f"[{3*iteration}/6] PDF rendering...")
     # Génération du PDF
     generate_pdf_report(train_df, pred_df, plots, output_pdf)
 

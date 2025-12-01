@@ -138,7 +138,9 @@ class Training:
             filename_prefix="best",
             score_function=score_function,
             score_name="neg_val_loss",
+            require_empty=False,   # <---- important fix
         )
+
 
         val_evaluator.add_event_handler(
             Events.COMPLETED,
@@ -151,10 +153,35 @@ class Training:
             },
         )
 
-        early_stopping_handler = EarlyStopping(
-            patience=self.early_stopping_patience, score_function=score_function, trainer=trainer
-        )
-        val_evaluator.add_event_handler(Events.COMPLETED, early_stopping_handler)
+        # =========================================================
+        # 🔥 Improved Early Stopping
+        # =========================================================
+
+        best_loss = float("inf")
+        epochs_without_improve = 0
+        min_delta = 1e-4   # minimal change to count as improvement
+
+        @val_evaluator.on(Events.COMPLETED)
+        def improved_early_stopping(engine):
+            nonlocal best_loss, epochs_without_improve
+
+            val_loss = engine.state.metrics["val_loss"]
+
+            # Improvement?
+            if val_loss < best_loss - min_delta:
+                best_loss = val_loss
+                epochs_without_improve = 0
+            else:
+                epochs_without_improve += 1
+
+            # Trigger early stop
+            if epochs_without_improve >= self.early_stopping_patience:
+                self.logger.log(
+                    f"Stopping early at epoch {trainer.state.epoch} "
+                    f"(best val_loss={best_loss:.4f})"
+                )
+                trainer.terminate()
+
 
         ## Metrics handlers
 
@@ -233,6 +260,11 @@ class Training:
             f"Best F1 score: {best_metrics['f1_score']:.3f}"
         )
         self.save_summary()
+        best_model_path = self.out_path / "best_model.pt"
+
+        # Saving the best model
+        torch.save(self.model.state_dict(), best_model_path)
+        self.logger.log(f"Best model saved to {best_model_path}")
         self.save_train_history()
         self.save_best_preds()
 

@@ -25,44 +25,55 @@ class FastaSource:
     ----------
     data_path : Path | str
         Path to the directory containing FASTA files.
-
-    Raises
-    ------
-    FileNotFoundError
-        If the provided data_path is not a valid directory.
     """
 
     def __init__(self, data_path: Path | str) -> None:
         self.data_path = Path(data_path)
+
+        if not self.data_path.is_dir():
+            raise FileNotFoundError(f"{self.data_path} is not a valid directory.")
+
+        # For consistency
+        self.root = self.data_path
+
+        # All files, sorted
+        self.files = sorted(
+            list(self.data_path.glob("*.fasta")) +
+            list(self.data_path.glob("*.fa"))
+        )
+
+        # True filenames preserved
+        self.filenames = [f.name for f in self.files]
+
+        # Build aligns with TRUE filenames
         self.aligns = self.get_aligns()
+
 
     def get_aligns(self) -> StrAlignDict:
         """
-        Create self.aligns alignments dictionary from fasta files
-        in self.data_path.
+        Load all FASTA files and return a dict:
+            { "filename.fasta": [seq1, seq2, ...] }
         """
-        if not self.data_path.is_dir():
-            msg = f"{self.data_path} is not a valid directory."
-            raise FileNotFoundError(msg)
+        fasta_files = chain(
+            self.data_path.glob("*.fasta"),
+            self.data_path.glob("*.fa")
+        )
 
-        # Import data from fasta files
-        fasta_files = chain(self.data_path.glob("*.fasta"), self.data_path.glob("*.fa"))
-        aligns = {f.stem: FastaSource.parse_fasta(f) for f in fasta_files}
+        aligns: StrAlignDict = {}
+        for file in fasta_files:
+            aligns[file.name] = FastaSource.parse_fasta(file)
+
         return aligns
+
 
     @staticmethod
     def parse_fasta(file: Path) -> list:
         """
         Parse a FASTA file and extract sequences.
 
-        Parameters
-        ----------
-        file : Path
-            Path to the FASTA file to be parsed.
         Returns
         -------
-        list
-            A list of sequences extracted from the FASTA file.
+        list of sequences
         """
         sequences = []
         with open(file) as f:
@@ -83,13 +94,6 @@ class FastaSource:
 class DictSource:
     """
     Data source for a dictionary of alignments.
-
-    Parameters
-    ----------
-    aligns : StrAlignDict
-        Dictionary of alignments.
-    tokenizer : BaseTokenizer
-        The tokenizer used to process sequences.
     """
 
     def __init__(
