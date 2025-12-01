@@ -10,12 +10,13 @@ def load_and_concat_parquets(base_dir, classifiers, filename):
     """
     Load and concatenate the files . parquet of a given type for all classifiers.
     Cherche dans run_1/ et run_2/ et aussi directement dans les dossiers des classifieurs.
+    Charge les fichiers des deux runs s'ils existent.
     """
 
     dfs = []
     for clf in classifiers:
-        # Chercher dans run_1 et run_2 d'abord
-        found = False
+        found_in_runs = False
+        # Chercher dans run_1 et run_2 - charger les deux s'ils existent
         for run_dir in ["run_1", "run_2"]:
             path = base_dir / run_dir / clf / filename
             if path.exists():
@@ -26,15 +27,15 @@ def load_and_concat_parquets(base_dir, classifiers, filename):
                 elif "run" in df.columns and df["run"].isna().all():
                     df["run"] = run_dir
                 dfs.append(df)
-                found = True
-                # Copier aussi vers le dossier du classifieur pour compatibilité
-                clf_dir = base_dir / clf
-                clf_dir.mkdir(exist_ok=True)
-                shutil.copy(path, clf_dir / filename)
-                break
+                found_in_runs = True
+                # Copier aussi vers le dossier du classifieur pour compatibilité (seulement depuis run_1 pour éviter d'écraser)
+                if run_dir == "run_1":
+                    clf_dir = base_dir / clf
+                    clf_dir.mkdir(exist_ok=True)
+                    shutil.copy(path, clf_dir / filename)
         
         # Si pas trouvé dans run_1/run_2, chercher directement dans le dossier du classifieur
-        if not found:
+        if not found_in_runs:
             path = base_dir / clf / filename
             if path.exists():
                 df = pd.read_parquet(path)

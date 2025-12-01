@@ -263,15 +263,31 @@ class Pipeline:
                 return xs, ys
 
             def patched_get_loaders():
-                from torch.utils.data import DataLoader
+                from torch.utils.data import DataLoader, random_split
+                from torch import Generator
+                from classifiers.utils import RANDOM_SEED
+                
+                # CRITICAL FIX: Apply train/validation split to prevent data leakage
+                if model.dataset is None:
+                    msg = "Dataset has not been defined"
+                    raise ValueError(msg)
+                
+                model.logger.log("--- Creating loaders (with train/val split) ---")
+                generator = Generator().manual_seed(RANDOM_SEED)
+                train_dataset, valid_dataset = random_split(
+                    model.dataset, 
+                    [model.split_proportion, 1 - model.split_proportion], 
+                    generator=generator
+                )
+                
                 train_loader = DataLoader(
-                    model.dataset,
+                    train_dataset,
                     batch_size=model.batch_size,
                     shuffle=True,
                     collate_fn=collate_x_y,
                 )
                 valid_loader = DataLoader(
-                    model.dataset,
+                    valid_dataset,
                     batch_size=model.batch_size,
                     shuffle=False,
                     collate_fn=collate_x_y,
@@ -279,7 +295,7 @@ class Pipeline:
                 return train_loader, valid_loader
 
             model.get_loaders = patched_get_loaders
-            self.logger.info(f"[RUN] Applied collate_x_y patch to {clf_name}")
+            self.logger.info(f"[RUN] Applied collate_x_y patch to {clf_name} (with train/val split)")
 
         # ==================================================================
         #     TRAINING
@@ -708,6 +724,118 @@ class Pipeline:
             self.logger.warning(f"Error selecting best model for {clf_name}: {e}")
             return None
 
+    def _select_best_overall_model(self, run1_dir: Path) -> dict | None:
+        """
+        Select the single best model across all classifiers from Run 1.
+        Comparison is based on F1 score (primary) and validation loss (secondary).
+        
+        Parameters
+        ----------
+        run1_dir : Path
+            Directory containing Run 1 results
+        
+        Returns
+        -------
+        dict | None
+            Dictionary with keys: 'clf_name', 'clf', 'run1_dir', 'model_path', 'val_loss', 'f1_score'
+            or None if no valid model found
+        """
+        best_candidates = []
+        
+        for clf in self.classifiers:
+            clf_name = clf["classifier"]
+            clf_run1_dir = run1_dir / clf["out_dir"]
+            
+            if not clf_run1_dir.exists():
+                continue
+            
+            train_history_path = clf_run1_dir / "train_history.parquet"
+            if not train_history_path.exists():
+                # For LogisticRegressionClassifier, check summary.json instead
+                if clf_name == "LogisticRegressionClassifier":
+                    summary_path = clf_run1_dir / "summary.json"
+                    if summary_path.exists():
+                        try:
+                            import json
+                            with open(summary_path, "r") as f:
+                                summary = json.load(f)
+                            # Extract average F1 score from fold scores
+                            f1_scores = [float(s) for s in summary.get("fold_f1_scores", [])]
+                            if f1_scores:
+                                avg_f1 = np.mean(f1_scores)
+                                best_candidates.append({
+                                    "clf_name": clf_name,
+                                    "clf": clf,
+                                    "run1_dir": clf_run1_dir,
+                                    "model_path": None,  # LR doesn't save .pt files
+                                    "val_loss": None,
+                                    "f1_score": avg_f1,
+                                    "val_acc": np.mean([float(s) for s in summary.get("fold_accuracies", [])]) if summary.get("fold_accuracies") else None,
+                                })
+                        except Exception as e:
+                            self.logger.warning(f"Error reading summary for {clf_name}: {e}")
+                continue
+            
+            try:
+                history_df = pl.read_parquet(train_history_path)
+                
+                if history_df.is_empty():
+                    continue
+                
+                # Get best metrics (minimum val_loss)
+                if "val_loss" in history_df.columns:
+                    min_val_loss_row = history_df.filter(
+                        pl.col("val_loss") == history_df["val_loss"].min()
+                    )
+                    if min_val_loss_row.height > 0:
+                        best_row = min_val_loss_row.row(0, named=True)
+                        
+                        model_path = self._select_best_model(clf_name, clf_run1_dir)
+                        if model_path:
+                            best_candidates.append({
+                                "clf_name": clf_name,
+                                "clf": clf,
+                                "run1_dir": clf_run1_dir,
+                                "model_path": model_path,
+                                "val_loss": best_row.get("val_loss"),
+                                "f1_score": best_row.get("f1_score", best_row.get("f1", None)),
+                                "val_acc": best_row.get("val_acc", None),
+                            })
+            except Exception as e:
+                self.logger.warning(f"Error processing {clf_name} for best model selection: {e}")
+                continue
+        
+        if not best_candidates:
+            self.logger.error("No valid models found for best model selection")
+            return None
+        
+        # Select best: prioritize F1 score, then val_loss (lower is better)
+        # Filter out None f1_scores
+        valid_candidates = [c for c in best_candidates if c["f1_score"] is not None]
+        
+        if not valid_candidates:
+            self.logger.error("No valid models with F1 scores found")
+            return None
+        
+        # Sort by F1 score (descending), then by val_loss (ascending if available)
+        def sort_key(c):
+            f1 = c["f1_score"] if c["f1_score"] is not None else 0.0
+            val_loss = c["val_loss"] if c["val_loss"] is not None else float('inf')
+            return (-f1, val_loss)
+        
+        best_candidates.sort(key=sort_key)
+        best = best_candidates[0]
+        
+        # Format val_loss for logging
+        val_loss_str = f"{best['val_loss']:.4f}" if best['val_loss'] is not None else "N/A"
+        
+        self.logger.info(
+            f"[BEST MODEL] Selected {best['clf_name']} as best overall model "
+            f"(F1={best['f1_score']:.4f}, val_loss={val_loss_str})"
+        )
+        
+        return best
+
     # =================================================================
     #       SINGLE RUN = TRAIN (all) → PREDICT (compatibles) → FILTER
     # =================================================================
@@ -853,9 +981,139 @@ class Pipeline:
 
         # Copy selected sim
         for fname in tqdm(selected, desc="[RUN 2] Copy SIM", unit="file"):
-            src = self.base_data.source_simulated.root / fname
+            # Remove "_sim" suffix if present (added during preprocessing for duplicate keys)
+            # to get the original filename in the source directory
+            # The suffix "_sim" is added to the stem (before extension), not the full filename
+            if fname.endswith(".fasta"):
+                stem = fname[:-6]  # Remove .fasta
+                ext = ".fasta"
+            elif fname.endswith(".fa"):
+                stem = fname[:-3]  # Remove .fa
+                ext = ".fa"
+            else:
+                stem = fname
+                ext = ""
+            
+            # Try original filename (with _sim removed from stem if present)
+            if stem.endswith("_sim"):
+                original_fname = stem[:-4] + ext
+            else:
+                original_fname = fname
+            
+            # Try to find the file with original name first
+            src = self.base_data.source_simulated.root / original_fname
+            if not src.exists():
+                # Fallback: try with the fname as-is (in case it wasn't renamed)
+                src = self.base_data.source_simulated.root / fname
+            
             if src.exists():
-                shutil.copy(src, r2_sim / fname)
+                # Copy with original filename (without _sim suffix) to avoid issues in RUN 2
+                shutil.copy(src, r2_sim / original_fname)
+            else:
+                self.logger.warning(f"[RUN 2] File not found: {fname} (tried {original_fname} and {fname})")
+
+    # =================================================================
+    #                  RUN 2 RETRAIN BEST MODEL
+    # =================================================================
+    def run2_retrain_best_model(self, best_model_info: dict, threshold: float, initial_sim_count: int) -> tuple[set[str], pl.DataFrame]:
+        """
+        Retrain the best model from Run 1 with Run 2 dataset and make predictions.
+        
+        Parameters
+        ----------
+        best_model_info : dict
+            Dictionary containing best model information from _select_best_overall_model()
+        threshold : float
+            Threshold for filtering predictions
+        initial_sim_count : int
+            Initial number of simulated alignments (for calculating retention proportion)
+        
+        Returns
+        -------
+        tuple[set[str], pl.DataFrame]
+            Selected filenames and full predictions DataFrame
+        """
+        self.logger.info("=== RUN 2 START (RETRAINING BEST MODEL) ===")
+        
+        clf_name = best_model_info["clf_name"]
+        clf = best_model_info["clf"]
+        run2_dir = self.out_path / "run_2"
+        run2_dir.mkdir(exist_ok=True)
+        clf_run2_dir = run2_dir / clf["out_dir"]
+        clf_run2_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.logger.info(f"[RUN 2] Retraining {clf_name} with Run 2 dataset...")
+        
+        # Check if we need to skip due to single class
+        one_class_only = not self._has_two_classes()
+        if one_class_only:
+            if clf["is_deep"] and clf_name != "AACnnClassifier":
+                self.logger.warning(f"[RUN 2] Cannot retrain {clf_name} (deep model — single class)")
+                return set(), pl.DataFrame()
+            if clf_name == "LogisticRegressionClassifier":
+                self.logger.warning(f"[RUN 2] Cannot retrain {clf_name} (single class)")
+                return set(), pl.DataFrame()
+        
+        # Remove existing best_model.pt if it exists to force retraining
+        existing_model = clf_run2_dir / "best_model.pt"
+        if existing_model.exists():
+            existing_model.unlink()
+            self.logger.info(f"[RUN 2] Removed existing model to force retraining")
+        
+        # Train the model with Run 2 dataset
+        self._current_iteration = 2
+        self.train_classifier(clf, clf_run2_dir)
+        
+        # Now predict with the retrained model
+        self.logger.info(
+            f"────────────────────────────────────────────\n"
+            f" RUN 2 — PREDICTIONS (RETRAINED MODEL)\n"
+            f"────────────────────────────────────────────"
+        )
+        
+        preds = self.predict_on_sim(clf, clf_run2_dir)
+        
+        if preds is None:
+            self.logger.warning(f"[RUN 2] No predictions generated for {clf_name}")
+            return set(), pl.DataFrame()
+        
+        # Export ROC data
+        if "prob_real" in preds.columns and hasattr(self.base_data, 'labels'):
+            self._export_roc_data(preds, clf_name, 2, self.base_data.labels)
+        
+        selected: set[str] = set()
+        
+        # Filtering with optimal threshold
+        if "prob_real" in preds.columns:
+            optimal_threshold = self._find_optimal_threshold_roc(preds, self.base_data.labels)
+            self.logger.info(
+                f"[RUN 2] {clf_name}: optimal threshold = {optimal_threshold:.4f} (from ROC)"
+            )
+            # Filter: only keep simulations (LABEL_SIMULATED = 1) that are flagged as real
+            if hasattr(self.base_data, 'labels'):
+                labels_df = pl.DataFrame({
+                    "filename": list(self.base_data.labels.keys()),
+                    "true_label": list(self.base_data.labels.values())
+                })
+                preds_with_labels = preds.join(labels_df, on="filename", how="left")
+                flagged = preds_with_labels.filter(
+                    (pl.col("true_label") == LABEL_SIMULATED) & 
+                    (pl.col("prob_real") >= optimal_threshold)
+                )
+            else:
+                flagged = preds.filter(preds["prob_real"] >= optimal_threshold)
+            for fname in flagged["filename"]:
+                selected.add(fname)
+        
+        # Calculate retention proportion
+        final_count = len(selected)
+        retention_proportion = final_count / initial_sim_count if initial_sim_count > 0 else 0.0
+        self.logger.info(
+            f"[RUN 2] Selected {final_count} sims flagged REAL "
+            f"({retention_proportion:.2%} of initial {initial_sim_count} simulated alignments)"
+        )
+        
+        return selected, preds
 
     # =================================================================
     #                  RUN 2 ONLY WITH BEST MODELS
@@ -1010,7 +1268,9 @@ class Pipeline:
             - Run1 on full dataset (real + all simulated)
             - Filter simulated alignments
             - Build Run2 dataset
-            - Run2 on refined dataset
+            - Select best model from Run 1
+            - Retrain best model with Run2 dataset
+            - Make predictions and calculate retention proportion
             - Save full prediction tables for both runs
         """
 
@@ -1025,6 +1285,18 @@ class Pipeline:
         # Save full prediction DF
         preds_run1.write_parquet(self.out_path / "run_1/preds_run1.parquet")
 
+        # Store initial count of simulated alignments
+        initial_sim_count = len(self.base_data.source_simulated.files)
+
+        # ---------------- Select best model from Run 1 ----------------
+        self.logger.info("=== SELECTING BEST MODEL FROM RUN 1 ===")
+        run1_dir = self.out_path / "run_1"
+        best_model_info = self._select_best_overall_model(run1_dir)
+        
+        if best_model_info is None:
+            self.logger.error("Failed to select best model from Run 1. Cannot proceed with Run 2.")
+            return
+
         # ---------------- Build RUN2 dataset ----------------
         self.logger.info("=== BUILDING RUN 2 DATASET ===")
         self.build_run2_dataset(selected_1)
@@ -1036,11 +1308,23 @@ class Pipeline:
             tokenizer=self.tokenizer,
         )
 
-        # ---------------- RUN 2 with best models ----------------
-        self.logger.info("=== RUN 2 START (WITH BEST MODELS) ===")
-        self.run2_only_with_best_models()
+        # ---------------- RUN 2: Retrain best model ----------------
+        selected_2, preds_run2 = self.run2_retrain_best_model(
+            best_model_info, 
+            threshold,
+            initial_sim_count
+        )
 
+        # Save Run 2 predictions
+        if not preds_run2.is_empty():
+            preds_run2.write_parquet(self.out_path / "run_2/preds_run2.parquet")
+
+        # Final summary
         self.logger.info("=== PIPELINE COMPLETE ===")
+        self.logger.info(
+            f"Final retention: {len(selected_2)}/{initial_sim_count} simulated alignments "
+            f"({len(selected_2)/initial_sim_count:.2%})"
+        )
 
 
 

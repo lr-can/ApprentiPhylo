@@ -99,7 +99,9 @@ class Training:
             model = torch.compile(model)
 
         loss_fn = nn.BCEWithLogitsLoss()
-        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate)  # type: ignore
+        # Add weight decay for L2 regularization to prevent overfitting
+        # Higher weight_decay (1e-3) for better regularization
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=1e-3)  # type: ignore
         scheduler = create_lr_scheduler_with_warmup(
             torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda epoch: 0.99**epoch),
             warmup_start_value=0,

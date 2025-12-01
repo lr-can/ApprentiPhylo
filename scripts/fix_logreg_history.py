@@ -7,6 +7,7 @@ def generate_logreg_train_history(base_dir: str | Path, n_epochs: int = 50) -> P
     """
     Génère un fichier train_history.parquet pour LogisticRegressionClassifier
     afin de permettre la génération correcte des graphiques dans le rapport.
+    Cherche d'abord dans run_1/ et run_2/ avant de chercher directement dans le dossier du classifieur.
 
     Parameters
     ----------
@@ -21,17 +22,33 @@ def generate_logreg_train_history(base_dir: str | Path, n_epochs: int = 50) -> P
         Chemin vers le fichier train_history.parquet généré.
     """
     base_dir = Path(base_dir)
-    logreg_dir = base_dir / "LogisticRegressionClassifier"
+    
+    # Chercher d'abord dans run_1, puis run_2, puis directement dans le dossier du classifieur
+    logreg_dir = None
+    existing_history = None
+    
+    for search_dir in [base_dir / "run_1" / "LogisticRegressionClassifier",
+                       base_dir / "run_2" / "LogisticRegressionClassifier",
+                       base_dir / "LogisticRegressionClassifier"]:
+        history_file = search_dir / "train_history.parquet"
+        if history_file.exists():
+            existing_history = history_file
+            logreg_dir = search_dir
+            break
+        elif search_dir.exists() and logreg_dir is None:
+            logreg_dir = search_dir
+    
+    # Si le fichier existe déjà, retourner son chemin
+    if existing_history is not None:
+        print(f"ℹ️ train_history.parquet existe déjà : {existing_history}")
+        return existing_history
+    
+    # Si aucun dossier n'existe, afficher l'avertissement
+    if logreg_dir is None:
+        print(f"⚠️ Dossier results/classification/LogisticRegressionClassifier introuvable, création ignorée.")
+        return base_dir / "LogisticRegressionClassifier" / "train_history.parquet"
+    
     out_path = logreg_dir / "train_history.parquet"
-
-    if not logreg_dir.exists():
-        print(f"⚠️ Dossier {logreg_dir} introuvable, création ignorée.")
-        return out_path
-
-    # Vérifie si le fichier existe déjà
-    if out_path.exists():
-        print(f"ℹ️ train_history.parquet existe déjà : {out_path}")
-        return out_path
 
     print(f"📊 Génération du train_history.parquet pour LogisticRegressionClassifier...")
 
