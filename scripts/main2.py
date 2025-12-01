@@ -20,6 +20,8 @@ from phylo_metrics import tree_summary
 from classification import run_classification
 from analyse_classif import process_classification_results
 from fix_logreg_history import generate_logreg_train_history
+from dashboard import run_dashboard
+
 
 
 # === LOGGING ===
@@ -147,7 +149,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # --- SIMULATE ---
-    p_sim = subparsers.add_parser("simulate")
+    p_sim = subparsers.add_parser("simulate", help="Run simulation pipeline")
     p_sim.add_argument("--pre-input", required=True)
     p_sim.add_argument("--pre-output", required=True)
     p_sim.add_argument("--minseq", type=int, required=True)
@@ -164,7 +166,7 @@ def main():
     p_sim.set_defaults(func=simulate_cmd)
 
     # --- CLASSIFY ---
-    p_cls = subparsers.add_parser("classify")
+    p_cls = subparsers.add_parser("classify", help="Run classification pipeline")
     p_cls.add_argument("--real-align", required=True)
     p_cls.add_argument("--sim-align", required=True)
     p_cls.add_argument("--output", required=True)
@@ -174,6 +176,11 @@ def main():
     p_cls.add_argument("--two-iterations", action="store_true", help="Enable Run1 + Run2 refinement")
     p_cls.add_argument("--threshold", type=float, default=0.5, help="Threshold to classify sims as REAL")
     p_cls.set_defaults(func=classify_cmd)
+
+    
+    # --- Visualisation Dashboard ---
+    p_dash = subparsers.add_parser("visualisation", help="Launch the Dash dashboard")
+    p_dash.set_defaults(func=lambda args: run_dashboard())
 
     args = parser.parse_args()
     args.func(args)

@@ -167,9 +167,13 @@ def generer_rapport(n_clicks):
         return f"Erreur lors de la génération du rapport : {e}"
 
 
-# --------------------------------------------------------------------
+
+
 # 🚀 Lancement du serveur
-# --------------------------------------------------------------------
+def run_dashboard():
+    app.run(debug=True, port=8050)  # remplace run_server par run
+
+
 if __name__ == "__main__":
     app.run(debug=True)
 
