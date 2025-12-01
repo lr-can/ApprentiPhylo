@@ -22,7 +22,9 @@ import json
 
 import torch
 import polars as pl
+import numpy as np
 from tqdm import tqdm
+from sklearn.metrics import roc_curve, roc_auc_score
 
 # ---------------------------------------------------------------------
 # PYTHONPATH FIX
@@ -40,6 +42,7 @@ from classifiers.logger import default_logger, default_logger_formatter
 
 from classifiers.data.sources import FastaSource
 from classifiers.data.data import Data
+from classifiers.utils import LABEL_REAL, LABEL_SIMULATED
 
 # =====================================================================
 # CONFIG
@@ -356,7 +359,7 @@ class Pipeline:
     def _predict_aacnn(self, clf: dict, clf_dir: Path, model_path: Path):
         """
         Custom prediction loop for AACnnClassifier:
-        - builds a Data object containing **only simulated alignments**
+        - builds a Data object containing **both real and simulated alignments** (for ROC calculation)
         - instantiates AACnnClassifier on this data
         - loads best_model.pt
         - runs a manual forward pass, handling 1 or 2 output neurons
@@ -370,14 +373,11 @@ class Pipeline:
         from torch.utils.data import DataLoader
         import copy
 
-        # --- Build Data with only simulated alignments ------------------
+        # --- Build Data with both real and simulated alignments (for ROC) ---
         real_src = FastaSource(self.base_data.source_real.data_path)
-        real_src.files = []
-        real_src.aligns = {}
-
         sim_src = FastaSource(self.base_data.source_simulated.data_path)
 
-        sim_data = Data(
+        full_data = Data(
             source_real=real_src,
             source_simulated=sim_src,
             tokenizer=self.tokenizer,
@@ -388,7 +388,7 @@ class Pipeline:
 
         # Instantiate classifier (architecture + dataset only)
         clf_obj = AACnnClassifier(
-            data=sim_data,
+            data=full_data,
             out_path=clf_dir,
             device=self.device,
             progress_bar=False,
@@ -506,6 +506,207 @@ class Pipeline:
                 f"[RUN {iteration}] Saved {len(flagged)} flagged sims for {clf_name} → {out_file}"
             )
 
+    # =================================================================
+    #                       ROC DATA EXPORT
+    # =================================================================
+    def _calculate_roc_data(self, preds_df: pl.DataFrame, true_labels: dict[str, int]) -> pl.DataFrame:
+        """
+        Calculate ROC curve data (FPR, TPR, thresholds) from predictions.
+        
+        Parameters
+        ----------
+        preds_df : pl.DataFrame
+            DataFrame with columns: filename, prob_real
+        true_labels : dict[str, int]
+            Dictionary mapping filename to true label (0=real, 1=simulated)
+        
+        Returns
+        -------
+        pl.DataFrame
+            DataFrame with columns: fpr, tpr, threshold
+        """
+        if preds_df.is_empty() or "prob_real" not in preds_df.columns:
+            return pl.DataFrame({"fpr": [], "tpr": [], "threshold": []})
+        
+        # Get true labels for each prediction
+        y_true = []
+        y_score = []
+        
+        for row in preds_df.iter_rows(named=True):
+            filename = row["filename"]
+            if filename in true_labels:
+                y_true.append(true_labels[filename])
+                y_score.append(row["prob_real"])
+        
+        if len(y_true) == 0:
+            return pl.DataFrame({"fpr": [], "tpr": [], "threshold": []})
+        
+        y_true = np.array(y_true)
+        y_score = np.array(y_score)
+        
+        # Check if we have both classes
+        unique_labels = np.unique(y_true)
+        if len(unique_labels) < 2:
+            self.logger.warning(
+                f"Cannot calculate ROC curve: only {len(unique_labels)} class(es) found. "
+                "ROC requires both positive and negative classes."
+            )
+            return pl.DataFrame({"fpr": [], "tpr": [], "threshold": []})
+        
+        # Calculate ROC curve
+        try:
+            fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label=LABEL_SIMULATED)
+            # Add point at (0,0) for completeness
+            fpr = np.concatenate([[0.0], fpr])
+            tpr = np.concatenate([[0.0], tpr])
+            thresholds = np.concatenate([[1.0], thresholds])
+            
+            roc_df = pl.DataFrame({
+                "fpr": fpr.tolist(),
+                "tpr": tpr.tolist(),
+                "threshold": thresholds.tolist(),
+            })
+            
+            return roc_df
+        except Exception as e:
+            self.logger.warning(f"Failed to calculate ROC curve: {e}")
+            return pl.DataFrame({"fpr": [], "tpr": [], "threshold": []})
+
+    def _find_optimal_threshold_roc(self, preds_df: pl.DataFrame, true_labels: dict[str, int]) -> float:
+        """
+        Find optimal threshold using Youden's J statistic (maximizes TPR - FPR).
+        
+        Parameters
+        ----------
+        preds_df : pl.DataFrame
+            DataFrame with columns: filename, prob_real
+        true_labels : dict[str, int]
+            Dictionary mapping filename to true label
+        
+        Returns
+        -------
+        float
+            Optimal threshold value
+        """
+        roc_df = self._calculate_roc_data(preds_df, true_labels)
+        
+        if roc_df.is_empty():
+            return 0.5  # Default threshold
+        
+        # Calculate Youden's J statistic (TPR - FPR) for each threshold
+        roc_df = roc_df.with_columns([
+            (pl.col("tpr") - pl.col("fpr")).alias("youden_j")
+        ])
+        
+        # Find threshold with maximum Youden's J
+        max_j_row = roc_df.filter(pl.col("youden_j") == roc_df["youden_j"].max())
+        
+        if max_j_row.height > 0:
+            optimal_threshold = max_j_row["threshold"][0]
+            return float(optimal_threshold)
+        
+        return 0.5  # Default threshold
+
+    def _export_roc_data(self, preds_df: pl.DataFrame, clf_name: str, iteration: int, true_labels: dict[str, int]) -> None:
+        """
+        Export ROC curve data to CSV file.
+        
+        Parameters
+        ----------
+        preds_df : pl.DataFrame
+            DataFrame with predictions
+        clf_name : str
+            Classifier name
+        iteration : int
+            Iteration number (1 or 2)
+        true_labels : dict[str, int]
+            Dictionary mapping filename to true label
+        """
+        roc_df = self._calculate_roc_data(preds_df, true_labels)
+        
+        if roc_df.is_empty():
+            self.logger.warning(f"[RUN {iteration}] No ROC data to export for {clf_name}")
+            return
+        
+        # Add classifier and iteration columns
+        roc_df = roc_df.with_columns([
+            pl.lit(clf_name).alias("classifier"),
+            pl.lit(iteration).alias("iteration"),
+        ])
+        
+        # Export to CSV
+        out_dir = self.out_path / f"run_{iteration}" / "roc_data"
+        out_dir.mkdir(exist_ok=True)
+        
+        csv_file = out_dir / f"{clf_name}_roc.csv"
+        roc_df.write_csv(csv_file)
+        
+        self.logger.info(f"[RUN {iteration}] ROC data exported for {clf_name} → {csv_file}")
+
+    # =================================================================
+    #                    BEST MODEL SELECTION
+    # =================================================================
+    def _select_best_model(self, clf_name: str, run_dir: Path) -> Path | None:
+        """
+        Select the best model based on minimum validation loss from train_history.
+        
+        Parameters
+        ----------
+        clf_name : str
+            Classifier name
+        run_dir : Path
+            Directory containing the classifier's output
+        
+        Returns
+        -------
+        Path | None
+            Path to the best model checkpoint, or None if not found
+        """
+        train_history_path = run_dir / "train_history.parquet"
+        
+        if not train_history_path.exists():
+            self.logger.warning(f"No train_history.parquet found for {clf_name} in {run_dir}")
+            return None
+        
+        try:
+            history_df = pl.read_parquet(train_history_path)
+            
+            if history_df.is_empty() or "val_loss" not in history_df.columns:
+                self.logger.warning(f"Invalid train_history for {clf_name}")
+                return None
+            
+            # Find epoch with minimum validation loss
+            min_val_loss_row = history_df.filter(
+                pl.col("val_loss") == history_df["val_loss"].min()
+            )
+            
+            if min_val_loss_row.height == 0:
+                self.logger.warning(f"Could not find minimum val_loss for {clf_name}")
+                return None
+            
+            best_epoch = min_val_loss_row["epoch"][0]
+            
+            # Check if best_model.pt exists (saved during training)
+            best_model_path = run_dir / "best_model.pt"
+            if best_model_path.exists():
+                self.logger.info(f"[BEST MODEL] {clf_name}: using best_model.pt (epoch {best_epoch})")
+                return best_model_path
+            
+            # Check checkpoint directory
+            checkpoint_dir = run_dir / "checkpoint"
+            if checkpoint_dir.exists():
+                checkpoint_files = list(checkpoint_dir.glob("best_model_*.pt"))
+                if checkpoint_files:
+                    best_checkpoint = sorted(checkpoint_files)[-1]  # Get most recent
+                    self.logger.info(f"[BEST MODEL] {clf_name}: using {best_checkpoint.name} (epoch {best_epoch})")
+                    return best_checkpoint
+            
+            self.logger.warning(f"No model checkpoint found for {clf_name} at epoch {best_epoch}")
+            return None
+            
+        except Exception as e:
+            self.logger.warning(f"Error selecting best model for {clf_name}: {e}")
+            return None
 
     # =================================================================
     #       SINGLE RUN = TRAIN (all) → PREDICT (compatibles) → FILTER
@@ -581,12 +782,38 @@ class Pipeline:
             if preds is None:
                 continue
 
+            # -------- Export ROC data --------
+            if "prob_real" in preds.columns and hasattr(self.base_data, 'labels'):
+                self._export_roc_data(preds, clf_name, iteration, self.base_data.labels)
+
             # -------- PATCH: concat predictions --------
             preds_all.append(preds)   # <---
 
-            # -------- FILTERING --------
+            # -------- FILTERING with optimal threshold --------
             if "prob_real" in preds.columns:
-                flagged = preds.filter(preds["prob_real"] >= threshold)
+                # Use optimal threshold from ROC instead of fixed threshold
+                optimal_threshold = self._find_optimal_threshold_roc(preds, self.base_data.labels)
+                self.logger.info(
+                    f"[RUN {iteration}] {clf_name}: optimal threshold = {optimal_threshold:.4f} (from ROC)"
+                )
+                # Filter: only keep simulations (LABEL_SIMULATED = 1) that are flagged as real
+                # First, add true labels to predictions for filtering
+                if hasattr(self.base_data, 'labels'):
+                    # Create a DataFrame with labels for joining
+                    labels_df = pl.DataFrame({
+                        "filename": list(self.base_data.labels.keys()),
+                        "true_label": list(self.base_data.labels.values())
+                    })
+                    # Join to add labels to predictions
+                    preds_with_labels = preds.join(labels_df, on="filename", how="left")
+                    # Keep only simulations (true_label == LABEL_SIMULATED) with prob_real >= threshold
+                    flagged = preds_with_labels.filter(
+                        (pl.col("true_label") == LABEL_SIMULATED) & 
+                        (pl.col("prob_real") >= optimal_threshold)
+                    )
+                else:
+                    # Fallback: if no labels, just filter by threshold (old behavior)
+                    flagged = preds.filter(preds["prob_real"] >= optimal_threshold)
                 for fname in flagged["filename"]:
                     selected.add(fname)
 
@@ -631,6 +858,150 @@ class Pipeline:
                 shutil.copy(src, r2_sim / fname)
 
     # =================================================================
+    #                  RUN 2 ONLY WITH BEST MODELS
+    # =================================================================
+    def run2_only_with_best_models(self) -> None:
+        """
+        Run only Run 2, selecting the best model from each classifier based on 
+        minimum validation loss from Run 1.
+        
+        Assumes Run 1 has already been executed and models are trained.
+        """
+        self.logger.info("=== RUN 2 ONLY (WITH BEST MODELS) ===")
+        
+        run1_dir = self.out_path / "run_1"
+        run2_dir = self.out_path / "run_2"
+        run2_dir.mkdir(exist_ok=True)
+        
+        # Select best models from Run 1
+        best_models = {}
+        for clf in self.classifiers:
+            clf_name = clf["classifier"]
+            clf_run1_dir = run1_dir / clf["out_dir"]
+            
+            if not clf_run1_dir.exists():
+                self.logger.warning(f"[BEST MODEL] Run 1 directory not found for {clf_name}, skipping")
+                continue
+            
+            best_model_path = self._select_best_model(clf_name, clf_run1_dir)
+            if best_model_path:
+                best_models[clf_name] = {
+                    "model_path": best_model_path,
+                    "clf": clf,
+                    "run1_dir": clf_run1_dir,
+                }
+        
+        if not best_models:
+            self.logger.error("No best models found from Run 1. Cannot proceed with Run 2.")
+            return
+        
+        self.logger.info(f"[BEST MODEL] Selected {len(best_models)} best models for Run 2")
+        
+        # Copy best models to Run 2 directories
+        for clf_name, model_info in best_models.items():
+            clf = model_info["clf"]
+            run2_clf_dir = run2_dir / clf["out_dir"]
+            run2_clf_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Copy best model
+            best_model_dest = run2_clf_dir / "best_model.pt"
+            shutil.copy(model_info["model_path"], best_model_dest)
+            self.logger.info(f"[BEST MODEL] Copied best model for {clf_name} to Run 2")
+            
+            # Copy train_history if it exists
+            train_history_src = model_info["run1_dir"] / "train_history.parquet"
+            if train_history_src.exists():
+                train_history_dest = run2_clf_dir / "train_history.parquet"
+                shutil.copy(train_history_src, train_history_dest)
+        
+        # Now run predictions on Run 2 dataset using best models
+        self._current_iteration = 2
+        
+        selected: set[str] = set()
+        preds_all = []
+        
+        # Check if Run 2 dataset exists
+        if not (self.out_path / "run_2_real").exists() or not (self.out_path / "run_2_sim").exists():
+            self.logger.warning("Run 2 dataset not found. Using current base_data.")
+        else:
+            # Reload dataset for Run 2
+            self.base_data = Data(
+                source_real=FastaSource(self.out_path / "run_2_real"),
+                source_simulated=FastaSource(self.out_path / "run_2_sim"),
+                tokenizer=self.tokenizer,
+            )
+        
+        # PREDICT using best models
+        self.logger.info(
+            f"────────────────────────────────────────────\n"
+            f" RUN 2 — PREDICTIONS WITH BEST MODELS\n"
+            f"────────────────────────────────────────────"
+        )
+        
+        for clf_name, model_info in best_models.items():
+            clf = model_info["clf"]
+            clf_dir = run2_dir / clf["out_dir"]
+            
+            # Skip if single class and incompatible
+            one_class_only = not self._has_two_classes()
+            if one_class_only and clf["is_deep"] and clf_name != "AACnnClassifier":
+                self.logger.info(f"[RUN 2] Skipping {clf_name} (deep model — single class)")
+                continue
+            if clf_name == "LogisticRegressionClassifier" and one_class_only:
+                self.logger.info(f"[RUN 2] Skipping {clf_name} (single class)")
+                continue
+            
+            preds = self.predict_on_sim(clf, clf_dir)
+            
+            if preds is None:
+                continue
+            
+            # Export ROC data
+            if "prob_real" in preds.columns and hasattr(self.base_data, 'labels'):
+                self._export_roc_data(preds, clf_name, 2, self.base_data.labels)
+            
+            preds_all.append(preds)
+            
+            # Filtering with optimal threshold
+            if "prob_real" in preds.columns:
+                optimal_threshold = self._find_optimal_threshold_roc(preds, self.base_data.labels)
+                self.logger.info(
+                    f"[RUN 2] {clf_name}: optimal threshold = {optimal_threshold:.4f} (from ROC)"
+                )
+                # Filter: only keep simulations (LABEL_SIMULATED = 1) that are flagged as real
+                # First, add true labels to predictions for filtering
+                if hasattr(self.base_data, 'labels'):
+                    # Create a DataFrame with labels for joining
+                    labels_df = pl.DataFrame({
+                        "filename": list(self.base_data.labels.keys()),
+                        "true_label": list(self.base_data.labels.values())
+                    })
+                    # Join to add labels to predictions
+                    preds_with_labels = preds.join(labels_df, on="filename", how="left")
+                    # Keep only simulations (true_label == LABEL_SIMULATED) with prob_real >= threshold
+                    flagged = preds_with_labels.filter(
+                        (pl.col("true_label") == LABEL_SIMULATED) & 
+                        (pl.col("prob_real") >= optimal_threshold)
+                    )
+                else:
+                    # Fallback: if no labels, just filter by threshold (old behavior)
+                    flagged = preds.filter(preds["prob_real"] >= optimal_threshold)
+                for fname in flagged["filename"]:
+                    selected.add(fname)
+        
+        # Merge all predictions
+        if preds_all:
+            preds_all = pl.concat(preds_all)
+        else:
+            preds_all = pl.DataFrame({"filename": [], "prob_real": [], "pred_class": []})
+        
+        # Save predictions
+        preds_all.write_parquet(self.out_path / "run_2/preds_run2.parquet")
+        
+        self.logger.info(f"[RUN 2] Selected {len(selected)} sims flagged REAL")
+        self.logger.info("=== RUN 2 COMPLETE ===")
+
+    # =================================================================
     #                     TWO ITERATIONS (MAIN MODE)
     # =================================================================
     def run_two_iterations(self, threshold: float) -> None:
@@ -665,15 +1036,9 @@ class Pipeline:
             tokenizer=self.tokenizer,
         )
 
-        # ---------------- RUN 2 ----------------
-        self.logger.info("=== RUN 2 START ===")
-
-        self._current_iteration = 2
-        selected_2, preds_run2 = self.run_single_iteration(2, threshold)
-
-        self.logger.info(f"[RUN 2] {len(selected_2)} sims flagged REAL after refinement")
-
-        preds_run2.write_parquet(self.out_path / "run_2/preds_run2.parquet")
+        # ---------------- RUN 2 with best models ----------------
+        self.logger.info("=== RUN 2 START (WITH BEST MODELS) ===")
+        self.run2_only_with_best_models()
 
         self.logger.info("=== PIPELINE COMPLETE ===")
 
@@ -696,17 +1061,20 @@ if __name__ == "__main__":
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--no-progress", action="store_true")
     parser.add_argument("--no-compile", action="store_true")
-    parser.add_argument("--two-iterations", action="store_true")
+    parser.add_argument("--two-iterations", action="store_true", help="Run both Run1 and Run2")
+    parser.add_argument("--run2-only", action="store_true", help="Run only Run2 with best models from Run1")
     args = parser.parse_args()
 
     pipeline = Pipeline.from_config(
         args.config,
         progress_bar=not args.no_progress,
-        disable_compile=not args.no_compile,   # <-- FIX logique
+        disable_compile=args.no_compile,
         threshold=args.threshold,
     )
 
-    if args.two_iterations:
+    if args.run2_only:
+        pipeline.run2_only_with_best_models()
+    elif args.two_iterations:
         pipeline.run_two_iterations(args.threshold)
     else:
         pipeline.run()
