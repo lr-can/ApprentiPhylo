@@ -55,6 +55,8 @@ def plot_learning_curves(df, output_dir):
     """
     Generates the learning curves for each classifier.
     Tries to guess the correct name of the loss columns.
+    Uses the same scale (0 to max) for all loss curves.
+    Includes run_1 and run_2 curves separately.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     plots = []
@@ -64,41 +66,101 @@ def plot_learning_curves(df, output_dir):
         print("Aucune donnée d'entraînement disponible pour générer les courbes d'apprentissage.")
         return plots
 
+    # Détecter les colonnes de perte
+    possible_train_loss = [c for c in df.columns if "loss" in c.lower() and "val" not in c.lower()]
+    possible_val_loss = [c for c in df.columns if "val" in c.lower() and "loss" in c.lower()]
+    
+    if not possible_train_loss:
+        print("Pas de colonne de loss trouvée dans les données.")
+        return plots
+    
+    # Calculer le max de toutes les pertes pour avoir la même échelle
+    max_loss = 0
+    loss_cols = possible_train_loss + possible_val_loss
+    for col in loss_cols:
+        if col in df.columns:
+            col_max = df[col].max()
+            if pd.notna(col_max) and col_max > 0:
+                max_loss = max(max_loss, col_max)
+    
+    # Si max_loss est toujours 0, utiliser 1.0 comme valeur par défaut
+    if max_loss == 0:
+        max_loss = 1.0
+
+    train_loss_col = possible_train_loss[0]
+    val_loss_col = possible_val_loss[0] if possible_val_loss else None
+
+    # Grouper par classifier et run pour créer des courbes séparées
+    has_run_column = "run" in df.columns
+    
     for clf, subdf in df.groupby("classifier"):
-        plt.figure()
-
-        if "epoch" not in subdf.columns:
-            print(f"Pas de colonne 'epoch' dans {clf}, courbe ignorée.")
-            continue
-
-        grouped = subdf.groupby("epoch").mean(numeric_only=True)
-
-        # Détection automatique du nom des colonnes de perte
-        possible_train_loss = [c for c in grouped.columns if "loss" in c.lower() and "val" not in c.lower()]
-        possible_val_loss = [c for c in grouped.columns if "val" in c.lower() and "loss" in c.lower()]
-
-        if not possible_train_loss:
-            print(f"Pas de colonne de loss trouvée pour {clf}, colonnes = {list(grouped.columns)}")
+        if has_run_column:
+            # Créer une courbe par run
+            for run_name, run_subdf in subdf.groupby("run"):
+                if "epoch" not in run_subdf.columns:
+                    continue
+                
+                plt.figure()
+                grouped = run_subdf.groupby("epoch").mean(numeric_only=True)
+                
+                if train_loss_col in grouped.columns:
+                    plt.plot(grouped.index, grouped[train_loss_col], label=f"{train_loss_col}", linewidth=2)
+                
+                if val_loss_col and val_loss_col in grouped.columns:
+                    plt.plot(grouped.index, grouped[val_loss_col], label=f"{val_loss_col}", linewidth=2)
+                
+                # Utiliser la même échelle pour toutes les courbes
+                plt.ylim(0, max_loss * 1.05)  # 5% de marge en haut
+                
+                # Formater le label du run
+                if run_name == "run_1":
+                    run_label = "Run 1"
+                elif run_name == "run_2":
+                    run_label = "Run 2"
+                elif run_name != "unknown":
+                    run_label = run_name.replace("_", " ").title()
+                else:
+                    run_label = ""
+                
+                plt.title(f"Courbe d'apprentissage - {clf} ({run_label})")
+                plt.xlabel("Epoch")
+                plt.ylabel("Loss")
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                
+                run_suffix = f"_{run_name}" if run_name != "unknown" else ""
+                plot_path = output_dir / f"{clf}{run_suffix}_learning_curve.png"
+                plt.savefig(plot_path, bbox_inches="tight", dpi=150)
+                plt.close()
+                plots.append(plot_path)
+        else:
+            # Pas de colonne run, créer une seule courbe
+            if "epoch" not in subdf.columns:
+                print(f"Pas de colonne 'epoch' dans {clf}, courbe ignorée.")
+                continue
+            
+            plt.figure()
+            grouped = subdf.groupby("epoch").mean(numeric_only=True)
+            
+            if train_loss_col in grouped.columns:
+                plt.plot(grouped.index, grouped[train_loss_col], label=f"{train_loss_col}", linewidth=2)
+            
+            if val_loss_col and val_loss_col in grouped.columns:
+                plt.plot(grouped.index, grouped[val_loss_col], label=f"{val_loss_col}", linewidth=2)
+            
+            # Utiliser la même échelle pour toutes les courbes
+            plt.ylim(0, max_loss * 1.05)  # 5% de marge en haut
+            
+            plt.title(f"Courbe d'apprentissage - {clf}")
+            plt.xlabel("Epoch")
+            plt.ylabel("Loss")
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+            
+            plot_path = output_dir / f"{clf}_learning_curve.png"
+            plt.savefig(plot_path, bbox_inches="tight", dpi=150)
             plt.close()
-            continue
-
-        train_loss_col = possible_train_loss[0]
-        plt.plot(grouped.index, grouped[train_loss_col], label=f"{train_loss_col}")
-
-        if possible_val_loss:
-            val_loss_col = possible_val_loss[0]
-            plt.plot(grouped.index, grouped[val_loss_col], label=f"{val_loss_col}")
-
-        plt.title(f"Courbe d'apprentissage - {clf}")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.legend()
-        plt.grid(True)
-
-        plot_path = output_dir / f"{clf}_learning_curve.png"
-        plt.savefig(plot_path, bbox_inches="tight")
-        plt.close()
-        plots.append(plot_path)
+            plots.append(plot_path)
 
     return plots
 
