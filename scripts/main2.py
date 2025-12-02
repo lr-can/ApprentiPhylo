@@ -21,6 +21,7 @@ from classification import run_classification
 from analyse_classif import process_classification_results
 from fix_logreg_history import generate_logreg_train_history
 from dashboard import run_dashboard
+from analyse_predictions_plotly import main as generate_plotly_plots
 
 
 
@@ -121,12 +122,19 @@ def classify_cmd(args):
 
         print("\nClassification pipeline (iterations) completed.")
 
+        # Generate interactive Plotly visualizations (always run)
+        print("\n[2/4] Generating interactive Plotly visualizations...")
+        try:
+            generate_plotly_plots()
+        except Exception as e:
+            print(f"⚠️  Warning: Could not generate Plotly plots: {e}")
+
         # Optional post-processing (only if user requests a report)
         if args.report_output:
-            print("\n[2/3] Generating logistic regression history...")
+            print("\n[3/4] Generating logistic regression history...")
             generate_logreg_train_history(args.output)
 
-            print("\n[3/3] Generating final report PDF...")
+            print("\n[4/4] Generating final report PDF...")
             process_classification_results(
                 base_dir=args.output,
                 output_pdf=args.report_output

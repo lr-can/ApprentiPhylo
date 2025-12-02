@@ -9,8 +9,11 @@ type LabelDict = dict[str, int]
 PADDING_TOKEN = 0
 AMBIG_TOKEN = 99
 
-LABEL_REAL = 0
-LABEL_SIMULATED = 1
+# Label definitions (aligned with model output indices)
+# Model outputs: [prob_class_0, prob_class_1]
+# prob_real = probs[:, 1] → so LABEL_REAL must be 1
+LABEL_SIMULATED = 0
+LABEL_REAL = 1
 
 RANDOM_SEED = 42
 

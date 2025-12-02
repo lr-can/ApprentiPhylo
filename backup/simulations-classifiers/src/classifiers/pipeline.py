@@ -570,8 +570,9 @@ class Pipeline:
             return pl.DataFrame({"fpr": [], "tpr": [], "threshold": []})
         
         # Calculate ROC curve
+        # pos_label=LABEL_REAL because prob_real represents P(REAL)
         try:
-            fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label=LABEL_SIMULATED)
+            fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label=LABEL_REAL)
             # Add point at (0,0) for completeness
             fpr = np.concatenate([[0.0], fpr])
             tpr = np.concatenate([[0.0], tpr])
@@ -590,7 +591,8 @@ class Pipeline:
 
     def _find_optimal_threshold_roc(self, preds_df: pl.DataFrame, true_labels: dict[str, int]) -> float:
         """
-        Return the AUC score as the threshold value.
+        Find optimal threshold using ROC curve analysis.
+        Uses Youden's J statistic (maximizes TPR - FPR).
         
         Parameters
         ----------
@@ -602,9 +604,9 @@ class Pipeline:
         Returns
         -------
         float
-            AUC score used as threshold
+            Optimal threshold from ROC curve
         """
-        # Build arrays for AUC calculation
+        # Build arrays for ROC calculation
         y_true = []
         y_score = []
         
@@ -624,17 +626,62 @@ class Pipeline:
         unique_labels = np.unique(y_true)
         if len(unique_labels) < 2:
             self.logger.warning(
-                f"Cannot calculate AUC: only {len(unique_labels)} class(es) found. "
-                "AUC requires both positive and negative classes."
+                f"Cannot calculate optimal threshold: only {len(unique_labels)} class(es) found. "
+                "ROC requires both positive and negative classes."
             )
             return 0.5  # Default threshold
         
-        # Calculate AUC and use it as threshold
+        # Calculate ROC curve
         try:
+            fpr, tpr, thresholds = roc_curve(y_true, y_score)
             auc = roc_auc_score(y_true, y_score)
-            return float(auc)
+            
+            # Check if AUC < 0.5 (model predicts inverse)
+            inverted = False
+            if auc < 0.5:
+                self.logger.warning(
+                    f"⚠️  AUC = {auc:.4f} < 0.5: Model predictions are inverted!"
+                )
+                self.logger.warning(
+                    f"    Inverting predictions for threshold calculation"
+                )
+                self.logger.warning(
+                    f"    This suggests labels may be swapped in training/prediction"
+                )
+                # Invert scores and recalculate ROC
+                y_score_inverted = 1 - y_score
+                fpr, tpr, thresholds = roc_curve(y_true, y_score_inverted)
+                auc_inverted = roc_auc_score(y_true, y_score_inverted)
+                self.logger.info(f"    After inversion: AUC = {auc_inverted:.4f}")
+                inverted = True
+            
+            # Calculate Youden's J statistic (TPR - FPR)
+            j_scores = tpr - fpr
+            
+            # Find index of maximum J
+            optimal_idx = np.argmax(j_scores)
+            optimal_threshold = float(thresholds[optimal_idx])
+            
+            # If we inverted the scores, we need to invert the threshold back
+            # for use with original scores
+            if inverted:
+                optimal_threshold = 1.0 - optimal_threshold
+                self.logger.info(f"    Threshold for original scores: {optimal_threshold:.4f}")
+            
+            # Handle inf or invalid threshold
+            if np.isinf(optimal_threshold) or np.isnan(optimal_threshold) or optimal_threshold < 0 or optimal_threshold > 1.0:
+                self.logger.warning(f"Optimal threshold is invalid ({optimal_threshold}), using 0.5 instead")
+                optimal_threshold = 0.5
+            
+            final_auc = auc_inverted if inverted else auc
+            self.logger.info(f"ROC AUC (corrected): {final_auc:.4f}")
+            self.logger.info(f"Optimal threshold (Youden's J): {optimal_threshold:.4f}")
+            self.logger.info(f"  At threshold: TPR={tpr[optimal_idx]:.4f}, FPR={fpr[optimal_idx]:.4f}, J={j_scores[optimal_idx]:.4f}")
+            
+            return optimal_threshold
+            
         except Exception as e:
-            self.logger.warning(f"Failed to calculate AUC: {e}")
+            self.logger.warning(f"Failed to calculate optimal threshold: {e}")
             return 0.5  # Default threshold
 
     def _export_roc_data(self, preds_df: pl.DataFrame, clf_name: str, iteration: int, true_labels: dict[str, int]) -> None:
@@ -931,12 +978,12 @@ class Pipeline:
             # -------- PATCH: concat predictions --------
             preds_all.append(preds)   # <---
 
-            # -------- FILTERING with AUC as threshold --------
+            # -------- FILTERING with optimal threshold from ROC --------
             if "prob_real" in preds.columns:
-                # Use AUC as threshold
+                # Calculate optimal threshold using Youden's J statistic
                 optimal_threshold = self._find_optimal_threshold_roc(preds, self.base_data.labels)
                 self.logger.info(
-                    f"[RUN {iteration}] {clf_name}: threshold = {optimal_threshold:.4f} (AUC value)"
+                    f"[RUN {iteration}] {clf_name}: optimal threshold = {optimal_threshold:.4f} (from ROC - Youden's J)"
                 )
                 # Filter: only keep simulations (LABEL_SIMULATED = 1) that are flagged as real
                 # First, add true labels to predictions for filtering
@@ -1101,7 +1148,7 @@ class Pipeline:
         if "prob_real" in preds.columns:
             optimal_threshold = self._find_optimal_threshold_roc(preds, self.base_data.labels)
             self.logger.info(
-                f"[RUN 2] {clf_name}: optimal threshold = {optimal_threshold:.4f} (from ROC)"
+                f"[RUN 2] {clf_name}: optimal threshold = {optimal_threshold:.4f} (from ROC - Youden's J)"
             )
             # Filter: only keep simulations (LABEL_SIMULATED = 1) that are flagged as real
             if hasattr(self.base_data, 'labels'):
@@ -1238,7 +1285,7 @@ class Pipeline:
             if "prob_real" in preds.columns:
                 optimal_threshold = self._find_optimal_threshold_roc(preds, self.base_data.labels)
                 self.logger.info(
-                    f"[RUN 2] {clf_name}: optimal threshold = {optimal_threshold:.4f} (from ROC)"
+                    f"[RUN 2] {clf_name}: optimal threshold = {optimal_threshold:.4f} (from ROC - Youden's J)"
                 )
                 # Filter: only keep simulations (LABEL_SIMULATED = 1) that are flagged as real
                 # First, add true labels to predictions for filtering
