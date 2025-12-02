@@ -21,19 +21,47 @@ def calculate_youden_threshold(y_true, y_score):
     """Calcule le seuil optimal avec le J de Youden"""
     try:
         fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label=1)
-        j_scores = tpr - fpr
-        optimal_idx = np.argmax(j_scores)
-        optimal_threshold = thresholds[optimal_idx]
         auc = roc_auc_score(y_true, y_score)
+        
+        # Calculer le J de Youden pour chaque point
+        j_scores = tpr - fpr
+        
+        # Filtrer les thresholds invalides (inf, nan, < 0, > 1)
+        valid_mask = np.isfinite(thresholds) & (thresholds >= 0) & (thresholds <= 1)
+        
+        if not np.any(valid_mask):
+            # Aucun threshold valide, utiliser 0.5
+            print(f"⚠️  Aucun threshold valide trouvé, utilisation de 0.5 par défaut")
+            return {
+                'threshold': 0.5,
+                'tpr': 0.5,
+                'fpr': 0.5,
+                'j_score': 0.0,
+                'auc': float(auc)
+            }
+        
+        # Trouver le meilleur J parmi les thresholds valides
+        valid_j_scores = j_scores[valid_mask]
+        valid_thresholds = thresholds[valid_mask]
+        valid_tpr = tpr[valid_mask]
+        valid_fpr = fpr[valid_mask]
+        
+        optimal_idx_in_valid = np.argmax(valid_j_scores)
+        
+        optimal_threshold = valid_thresholds[optimal_idx_in_valid]
+        optimal_tpr = valid_tpr[optimal_idx_in_valid]
+        optimal_fpr = valid_fpr[optimal_idx_in_valid]
+        optimal_j = valid_j_scores[optimal_idx_in_valid]
         
         return {
             'threshold': float(optimal_threshold),
-            'tpr': float(tpr[optimal_idx]),
-            'fpr': float(fpr[optimal_idx]),
-            'j_score': float(j_scores[optimal_idx]),
+            'tpr': float(optimal_tpr),
+            'fpr': float(optimal_fpr),
+            'j_score': float(optimal_j),
             'auc': float(auc)
         }
-    except:
+    except Exception as e:
+        print(f"⚠️  Erreur dans calculate_youden_threshold: {e}")
         return {
             'threshold': 0.5,
             'tpr': 0.0,
@@ -51,15 +79,9 @@ def load_predictions_with_labels(run_number):
     
     df = pl.read_parquet(preds_file)
     
-    # ⚠️ Inverser les prédictions RUN 1 seulement (ancienne convention)
-    # RUN 2 utilise déjà la bonne convention (réentraîné ou même dataset)
-    if run_number == 1:
-        print(f"⚠️  Correction des prédictions RUN {run_number} (ancienne convention)")
-        df = df.with_columns([
-            (1.0 - pl.col("prob_real")).alias("prob_real")
-        ])
-    else:
-        print(f"✓ RUN {run_number} utilise déjà la bonne convention")
+    # Note: Les données ont été régénérées avec la nouvelle convention des labels
+    # (LABEL_SIMULATED=0, LABEL_REAL=1). Plus besoin d'inversion.
+    print(f"✓ Chargement RUN {run_number} (convention: REAL=1, SIM=0)")
     
     # Ajouter labels (nouvelle convention: REAL=1, SIMULATED=0)
     # Pour RUN 1: utiliser les sources originales

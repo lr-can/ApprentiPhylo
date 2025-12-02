@@ -25,6 +25,7 @@ import polars as pl
 import numpy as np
 from tqdm import tqdm
 from sklearn.metrics import roc_curve, roc_auc_score
+import gc
 
 # ---------------------------------------------------------------------
 # PYTHONPATH FIX
@@ -1115,13 +1116,34 @@ class Pipeline:
                 self.logger.warning(f"[RUN 2] Cannot retrain {clf_name} (single class)")
                 return set(), pl.DataFrame()
         
-        # Remove existing best_model.pt if it exists to force retraining
+        # ============================================================
+        # CLEAN RESET: Remove all existing models and checkpoints
+        # ============================================================
+        # Remove existing best_model.pt
         existing_model = clf_run2_dir / "best_model.pt"
         if existing_model.exists():
             existing_model.unlink()
-            self.logger.info(f"[RUN 2] Removed existing model to force retraining")
+            self.logger.info(f"[RUN 2] Removed existing best_model.pt")
         
-        # Train the model with Run 2 dataset
+        # Remove checkpoint directory and all its contents
+        checkpoint_dir = clf_run2_dir / "checkpoint"
+        if checkpoint_dir.exists():
+            shutil.rmtree(checkpoint_dir)
+            self.logger.info(f"[RUN 2] Removed checkpoint directory")
+        
+        # Clear CUDA cache if using GPU
+        if self.device == "cuda" and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            self.logger.info(f"[RUN 2] Cleared CUDA cache")
+        
+        # Force garbage collection
+        gc.collect()
+        
+        self.logger.info(f"[RUN 2] Starting fresh training (new model instance, no weights from RUN 1)")
+        
+        # Train the model with Run 2 dataset (fresh initialization)
+        # Note: train_classifier() creates a NEW model instance with random init
+        # Seeds are controlled by RANDOM_SEED for reproducibility
         self._current_iteration = 2
         self.train_classifier(clf, clf_run2_dir)
         
