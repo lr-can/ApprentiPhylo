@@ -733,5 +733,11 @@ def generer_rapport(n_clicks):
 # --------------------------------------------------------------------
 # Lancement du serveur
 # --------------------------------------------------------------------
+def run_dashboard(debug=True, host="127.0.0.1", port=8050):
+    """Lance le dashboard Dash."""
+    print(f"🚀 Lancement du dashboard sur http://{host}:{port}")
+    app.run(debug=debug, host=host, port=port)
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    run_dashboard()

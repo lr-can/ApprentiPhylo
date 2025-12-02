@@ -235,4 +235,7 @@ python3 scripts/main2.py classify \
     --tools backup/ \
     --two-iterations \
     --report-output results/classification/final_report.pdf
+
+# --- VISUALISATION ---
+python3 scripts/main2.py visualisation
 """
