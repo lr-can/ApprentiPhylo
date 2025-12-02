@@ -225,34 +225,111 @@ def make_app():
                     return html.Div("No metrics file found at results/metrics/phylo_metrics.csv")
 
             elif tab == "tab-classif":
-                # attempt to find the most recent csv in results/classification
                 classif_dir = results_path() / "classification"
                 if not classif_dir.exists():
                     return html.Div("No classification directory found (results/classification).")
-                csvs = sorted(classif_dir.glob("*.csv"), key=lambda p: p.stat().st_mtime, reverse=True)
-                if not csvs:
-                    return html.Div("No classification CSVs found in results/classification.")
-                df = safe_read_csv(csvs[0])
+
+                # Collect all parquet + csv in subfolders and root
+                files = sorted(
+                    list(classif_dir.rglob("*.parquet")) +
+                    list(classif_dir.rglob("*.csv")),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True
+                )
+
+                if not files:
+                    return html.Div("No classification files (.csv or .parquet) found.")
+
+                # Most recent file
+                f = files[0]
+
+                # Load file properly
+                try:
+                    if f.suffix == ".csv":
+                        df = safe_read_csv(f)
+                    else:
+                        df = pd.read_parquet(f)
+                except Exception as e:
+                    return html.Div(f"Could not read file {f.name}: {e}")
+
                 if df.empty:
-                    return html.Div(f"Found file {csvs[0].name} but it's empty or unreadable.")
-                # choose likely columns
+                    return html.Div(f"File {f.name} is empty or unreadable.")
+
+                children = [
+                    html.H4(f"Classification results — {f.name}"),
+                    html.P(f"Path: {f.relative_to(results_path())}")
+                ]
+
+                # Detect probability-like column
                 prob_col = None
-                for c in ["probability", "prob", "score", "real_prob"]:
+                for c in ["probability", "prob", "score", "real_prob", "pred_prob", "y_pred"]:
                     if c in df.columns:
                         prob_col = c
                         break
+
+                # Detect true label column
+                ytrue_col = None
+                for c in ["y_true", "true", "label", "target"]:
+                    if c in df.columns:
+                        ytrue_col = c
+                        break
+
+                # -------------------------------
+                # 📊 1. Histogram of probabilities
+                # -------------------------------
                 if prob_col:
-                    fig = px.histogram(df, x=prob_col, title=f"Distribution of {prob_col} (from {csvs[0].name})")
-                else:
-                    fig = None
-                # simple table preview
-                table = dbc.Table.from_dataframe(df.head(200), striped=True, bordered=True, hover=True)
-                children = []
-                if fig:
+                    fig = px.histogram(df, x=prob_col, title=f"Distribution of {prob_col}")
                     children.append(dcc.Graph(figure=fig))
-                children.append(html.H5(f"Preview of {csvs[0].name} (first 200 rows)"))
-                children.append(table)
+
+                # -------------------------------
+                # 📈 2. ROC curve (if possible)
+                # -------------------------------
+                if prob_col and ytrue_col:
+                    try:
+                        from sklearn.metrics import roc_curve, auc
+                        fpr, tpr, _ = roc_curve(df[ytrue_col], df[prob_col])
+                        roc_auc = auc(fpr, tpr)
+
+                        fig_roc = px.line(
+                            x=fpr, y=tpr,
+                            title=f"ROC curve (AUC = {roc_auc:.4f})",
+                            labels={"x": "False Positive Rate", "y": "True Positive Rate"},
+                        )
+                        fig_roc.add_shape(
+                            type="line", x0=0, x1=1, y0=0, y1=1,
+                            line=dict(dash="dash")
+                        )
+                        children.append(dcc.Graph(figure=fig_roc))
+                    except Exception as e:
+                        children.append(html.Div(f"Could not compute ROC: {e}"))
+
+                # -----------------------------------
+                # 📉 3. Learning curves (train_history)
+                # Detect if the loaded file is a training history
+                # -----------------------------------
+                is_history = "epoch" in df.columns and "loss" in df.columns
+
+                if is_history:
+                    # Loss curve
+                    fig_loss = px.line(df, x="epoch", y="loss", title="Training loss")
+                    children.append(dcc.Graph(figure=fig_loss))
+
+                    # Accuracy curve
+                    if "accuracy" in df.columns:
+                        fig_acc = px.line(df, x="epoch", y="accuracy", title="Training accuracy")
+                        children.append(dcc.Graph(figure=fig_acc))
+
+                # -----------------------------------
+                # 🧾 Table preview
+                # -----------------------------------
+                preview = df.head(200)
+                children.append(html.H5("Preview (first 200 rows)"))
+                children.append(
+                    dbc.Table.from_dataframe(preview, striped=True, bordered=True, hover=True)
+                )
+
                 return html.Div(children)
+
 
             elif tab == "tab-tree":
                 if not selected_tree:
@@ -312,7 +389,7 @@ def make_app():
 
 
 def run_dashboard():
-    app, serveur = make_app()
+    app, server = make_app()
     app.run(debug=True)
 
 
