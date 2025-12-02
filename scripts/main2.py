@@ -20,7 +20,7 @@ from phylo_metrics import tree_summary
 from classification import run_classification
 from analyse_classif import process_classification_results
 from fix_logreg_history import generate_logreg_train_history
-from dashboard import run_dashboard
+from dashboard2 import run_dashboard
 from analyse_predictions_plotly import main as generate_plotly_plots
 
 
