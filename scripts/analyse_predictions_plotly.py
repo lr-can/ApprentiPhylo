@@ -14,7 +14,7 @@ from sklearn.metrics import roc_curve, roc_auc_score
 # Configuration
 RESULTS_DIR = Path("results/classification")
 OUTPUT_DIR = RESULTS_DIR / "predictions_analysis"
-OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def calculate_youden_threshold(y_true, y_score):
