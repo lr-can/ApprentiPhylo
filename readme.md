@@ -1,288 +1,415 @@
-# 🧬 PhyloClassifier - Automated pipeline for simulation and classification
+# PhyloClassifier - Automated pipeline for simulation and classification
+Simulation → Tree Inference → Phylogenetic Metrics → Classification → Reporting → Dashboard
 
-Ce dépôt fournit un **pipeline bioinformatique complet** pour :
 
-- **Simuler** des alignements phylogénétiques à partir de données réelles  
-- **Reconstruire** des arbres phylogénétiques  
-- **Calculer** des métriques phylo (MPD, n feuilles)  
-- **Classifier** alignements réels vs simulés (Run1 / Run2)  
-- **Générer** un **rapport PDF** complet  
-- **Visualiser** les résultats dans un dashboard interactif
+# 📑 Table of Contents
+1. [Introduction](#introduction)  
+2. [Pipeline Overview](#pipeline-overview)  
+3. [Installation & Dependencies](#installation--dependencies)  
+4. [Directory Structure](#directory-structure)  
+5. [Command-Line Interface](#command-line-interface)  
+6. [Simulation Pipeline](#simulation-pipeline)  
+   - [Step 1 — Preprocessing](#step-1--preprocessing)
+   - [Step 2 — Simulation](#step-2--simulation)
+   - [Step 3 — Tree Inference](#step-3--tree-inference)
+   - [Step 4 — Phylogenetic Metrics](#step-4--phylogenetic-metrics)
+7. [Classification Pipeline](#classification-pipeline)  
+8. [Dashboard Visualization](#dashboard-visualisation)  
+9. [Logging System](#logging-system)  
+10. [Example Commands](#example-commands)  
+11. [Troubleshooting & FAQ](#troubleshooting--faq)
 
-Toutes les étapes sont centralisées dans un seul script :
 
-python3 scripts/main2.py <simulate|classify|visualisation>
+# 🧬 Introduction
 
----
+This repository provides a unified end-to-end phylogenetic pipeline designed to:
+- preprocess real biological alignments,
+- simulate new datasets based on those alignments and evolutionary models,
+- infer phylogenetic trees from real and simulated data,
+- compute phylogenetic metrics (such as MPD),
+- classify simulated vs. real alignments using ML tools,
+- generate PDF reports summarizing classification results,
+- visualize results through an optional dashboard.
 
-# 📑 Table des matières
+The entire workflow is controlled through a single Python entrypoint:
+`python3 scripts/main2.py <command> [options]`
 
-- [🎯 Objectifs](#-objectifs)
-- [📦 Installation](#-installation)
-- [📂 Structure](#-structure)
-- [🚀 Utilisation](#-utilisation)
-  - [1️⃣ Simulation](#1️⃣-simulation)
-  - [2️⃣ Classification](#2️⃣-classification)
-  - [📄 Rapport PDF](#-rapport-pdf)
-  - [📊 Dashboard interactif](#-dashboard-interactif)
-- [🧱 Détails techniques](#-détails-techniques)
-- [🗂️ Logging & Reproductibilité](#️-logging--reproductibilité)
-- [🧪 Exemples](#-exemples)
-- [📬 Contact](#-contact)
+# 🧬 Pipeline Overview
 
----
+=> Schéma du pipeline à faire 
+    
 
-# 🎯 Objectifs
+# 🔧 Installation & Dependencies
+## 1. System Requirements
 
-Le pipeline combine :
+This project requires:
+- Python 3.8+
+- Unix-based system (Linux or macOS recommended)
 
-✔ Prétraitement d’alignements réels  
-✔ Simulation via **BppSuite**  
-✔ Reconstruction d’arbres phylogénétiques  
-✔ Calcul de métriques  
-✔ Classification des alignements  
-✔ Export PDF  
-✔ Dashboard interactif (Dash)
+## 2. External tools
+These external tools are **optional**.  
+They are only needed if you want to use the **simulation** part of the pipeline.  
+If used, they must be installed **before running the pipeline** and must be accessible in your `$PATH`.
 
----
+| Tool                  | Required for                      | Description                                                    |
+| --------------------- | --------------------------------- | -------------------------------------------------------------- |
+| **FastTree**          | Maximum-likelihood tree inference | Builds ML phylogenetic trees from multiple sequence alignments |
+| **BppSeqGen (Bio++)**   | Sequence simulation               | Required if you want to run the simulation module              |
 
-# 📦 Installation
+### 2.1 FastTree 2.2
+FastTree provides precompiled executables for:
 
-### Dépendances Python
+- Linux 64-bit (AVX2 required)  
+- Windows command-line (AVX2 required, SSE)  
+- Multi-threaded executable (+OpenMP)  
 
-pip install -r requirements.txt
+You can download it from the [official FastTree website](http://www.microbesonline.org/fasttree/).
 
-yaml
-Copier le code
+For Mac or other platforms not covered by precompiled binaries, you can compile FastTree from source [(see official instructions)](https://morgannprice.github.io/fasttree/#Install)
 
-### Outils externes requis
+### 2.2 BppSeqGen
+BppSeqGen is part of the [BppSuite](https://github.com/BioPP/bppsuite) (Bio++ 3.0.0)  
+It can be compiled directly from the source files.
 
-- **BppSuite** (`bppseqgen`, `bppml`, etc.)
-- IQTree, FastTree, ou RAxML selon configuration
-- **LaTeX** (optionnel, pour les PDF)
+⚠️ Before compiling BppSeqGen, you must install the Bio++ libraries (e.g. in `$bpp_dir`).  
+The required libraries are:
 
----
+- **bpp-core**
+- **bpp-seq**
+- **bpp-phyl**
+- **bpp-popgen**
 
-# 📂 Structure
+For detailed installation instructions, see the official guide:  
+https://github.com/BioPP/bpp-documentation.wiki.git
 
-.
-├── scripts/
-│ ├── main2.py # Pipeline principal
-│ ├── preprocess.py
-│ ├── simulation.py
-│ ├── compute_tree.py
-│ ├── phylo_metrics.py
-│ ├── classification.py
-│ ├── analyse_classif.py
-│ ├── fix_logreg_history.py
-│ ├── dashboard.py
-│
-├── data/
-├── backup/
-├── results/
-├── logs/
-└── README.md
+## 3. Cloning
 
-yaml
-Copier le code
+# 📁 Directory Structure
 
----
 
-# 🚀 Utilisation
 
-## 1️⃣ Simulation
 
-Effectue :
+🖥️ Command-Line Interface
 
-1. Prétraitement des alignements
-2. Simulation (Bio++)
-3. Reconstruction des arbres
-4. Calcul des métriques MPD
+The main entrypoint:
 
-### Commande
+python3 scripts/main2.py <command> [options]
 
-python3 scripts/main2.py simulate
---pre-input <dir_raw>
---pre-output <dir_clean>
---minseq N --maxsites N --minsites N
---alphabet aa|dna
---align <clean_dir>
---tree <tree_dir>
---config <model.bpp>
---sim-output <dir>
---ext_rate <float>
---tree-output <dir>
---metrics-output <dir>
 
-yaml
-Copier le code
+Available commands:
 
----
+Command	Description
+simulate	Runs preprocessing → simulation → tree inference → metrics
+classify	Runs the machine-learning classification pipeline
+visualisation	Launches the dashboard
+🧪 SIMULATION Pipeline
 
-## 2️⃣ Classification
+Triggered by:
 
-Deux modes disponibles :
+python3 scripts/main2.py simulate [OPTIONS]
 
-| Mode | Description |
-|------|-------------|
-| **Run1** | Classification simple |
-| **Run1 + Run2** | Raffinement itératif |
 
-### Commande
+This pipeline includes 4 stages:
 
-python3 scripts/main2.py classify
---real-align <dir>
---sim-align <dir>
---output <dir>
---config <file.json>
---tools <dir>
-[--two-iterations]
-[--threshold 0.5]
-[--report-output report.pdf]
+⭐ Step 1 — Preprocessing
 
-yaml
-Copier le code
+Handled by:
 
----
+Preprocess.preprocessing()
+Preprocess.remove_gaps()
+Preprocess.remove_ambig_sites()
 
-## 📄 Rapport PDF
+Purpose
 
-Le PDF inclut :
+Clean raw alignments before simulation.
 
-- Résumé du modèle
-- Performances (Run1 / Run2)
-- Courbes logistic regression
-- Tableaux récapitulatifs
-- Diagnostics
+Standardize formats.
 
-Il est généré si `--report-output` est fourni.
+Remove sequences that do not meet criteria.
 
----
+Options
+Option	Explanation
+--pre-input	Directory containing raw alignments.
+--pre-output	Where cleaned data will be written.
+--minseq	Minimum number of sequences required in each alignment.
+--maxsites	Max allowed alignment length (sites).
+--minsites	Min allowed alignment length.
+--alphabet	"aa" or "dna"
+Output
 
-## 📊 Dashboard interactif
+A folder:
 
-Lancement :
+<pre-output>/clean_data/
 
-python3 scripts/main2.py visualisation
+⭐ Step 2 — Simulation
 
-markdown
-Copier le code
+Implemented by BppSimulator.
 
-Fonctionnalités :
+Purpose
 
-- Visualisation des scores
-- Comparaison des simulateurs
-- Exploration des distances phylo
-- Filtres dynamiques
+Generate simulated alignments based on:
 
----
+cleaned alignments,
 
-# 🧱 Détails techniques
+a reference tree,
 
-### 🔹 Prétraitement (`Preprocess`)
-- Filtre séquences courtes
-- Supprime gaps
-- Supprime sites ambigus (stratégies `gapless` & `clean`)
+a Bio++ configuration file (.bpp),
 
-### 🔹 Simulation (`BppSimulator`)
-- Utilise `bppseqgen`
-- Modèles configurables (`.bpp`)
-- Taux d’extinction ajustable
+an extinction rate parameter.
 
-### 🔹 Arbres (`ComputingTrees`)
-- IQTree / FastTree selon outils disponibles
-- Sortie en `.nwk`
+Options
+Option	Description
+--align	Input directory of cleaned alignments.
+--tree	Reference tree file/folder used by Bio++.
+--config	Bio++ simulation config file.
+--sim-output	Directory to write simulated alignments.
+--ext_rate	Extinction rate used in the simulation process.
+Output
+<sim-output>/alignment_*.fa
 
-### 🔹 Métriques (`tree_summary`)
-- MPD
-- Nombre de feuilles
+⭐ Step 3 — Tree Inference
 
-### 🔹 Classification (`run_classification`)
-- Logistic regression
-- Réentraînement (Run2) optionnel
-- Score threshold configurable
+Executed via:
 
-### 🔹 Rapport PDF
-- Basé sur `analyse_classif.py`
-- Figures intégrées
-- Résumé analysé
+ComputingTrees.compute_all_trees()
 
----
+Purpose
 
-# 🗂️ Logging & Reproductibilité
+Infer phylogenetic trees for each simulated alignment using the tools defined in the internal module.
 
-Chaque étape écrit dans :  
-`logs/pipeline_log.csv`
+Options
+Option	Description
+--tree-output	Output directory for inferred trees.
+Output
+<tree-output>/*.nwk
 
-Champs :
+⭐ Step 4 — Phylogenetic Metrics (MPD)
 
-| Champ | Description |
-|-------|-------------|
-| `step` | Étape du pipeline |
-| `status` | success / error |
-| `duration` | Temps d'exécution |
-| `args` | Paramètres exacts |
+Metrics computed for each tree using:
 
-Permet une **auditabilité complète**.
+tree_summary()
 
----
+Purpose
 
-# 🧪 Exemples
+Compute summary statistics such as:
 
-### ▶️ Simulation complète
+MPD (Mean Pairwise Distance)
 
-python3 scripts/main2.py simulate
---pre-input data/prot_mammals
---pre-output results/preprocessed
---minseq 5 --maxsites 2000 --minsites 100
---alphabet aa
---align results/preprocessed/clean_data
---tree data/prot_mammals/trees
---config backup/config/bpp/aa/WAG_frequencies.bpp
---sim-output results/simulations
---ext_rate 0.3
---tree-output results/trees
---metrics-output results/metrics
+number of leaves
 
-shell
-Copier le code
+Options
+Option	Description
+--metrics-output	Where the CSV containing metrics will be stored.
+Output
+<metrics-output>/phylo_metrics.csv
 
-### ▶️ Classification simple
+🧠 CLASSIFICATION Pipeline
 
-python3 scripts/main2.py classify
---real-align results/preprocessed/clean_data
---sim-align results/simulations
---output results/classification
---config backup/config_template.json
---tools backup/
+Run with:
 
-shell
-Copier le code
+python3 scripts/main2.py classify [OPTIONS]
 
-### ▶️ Classification + Run2 + PDF
 
-python3 scripts/main2.py classify
---real-align results/preprocessed/clean_data
---sim-align results/simulations
---output results/classification
---config backup/config_template.json
---tools backup/
+The pipeline includes:
+
+Run 1 — main classification
+
+Run 2 (optional) — refinement
+
+Optional PDF report generation
+
+⭐ Options
+Option	Description
+--real-align	Path to preprocessed real alignments.
+--sim-align	Path to simulated alignments.
+--output	Output directory for classification results.
+--config	JSON config file for classification.
+--tools	Directory containing ML models, embeddings, etc.
+--two-iterations	Enables Run1 + Run2 refinement.
+--threshold	Threshold used to classify simulations as REAL.
+--report-output	Optional PDF report output path.
+⭐ Run 1 — Main classification
+
+Executed by:
+
+run_classification()
+
+
+Produces:
+
+raw predictions
+
+feature matrices
+
+confusion matrices
+
+probability plots
+
+⭐ Run 2 (optional refinement)
+
+Enabled with:
+
 --two-iterations
---report-output results/classification/final_report.pdf
 
-shell
-Copier le code
 
-### ▶️ Dashboard
+Purpose:
+
+re-train or adjust decision rules based on Run 1
+
+improve separation real/simulated
+
+⭐ PDF Report Generation
+
+If you provide:
+
+--report-output <path.pdf>
+
+
+The pipeline will generate:
+
+logistic regression training history
+
+summary statistics
+
+final classification report
+
+plots
+
+📊 Dashboard Visualisation
+
+Run with:
 
 python3 scripts/main2.py visualisation
 
-yaml
-Copier le code
 
----
+This launches a Dash web application that allows interactive exploration of:
 
-# 📬 Contact
+classification results
 
-Pour questions, suggestions ou contributions :  
-**<ton email / lien GitHub>**
+simulated datasets
+
+metrics
+
+confusion matrices
+
+probabilities
+
+📝 Logging System
+
+Every step writes into:
+
+logs/pipeline_log.csv
+
+
+Example content:
+
+step	status	duration	args
+simulate_pipeline	success	120.5	{...}
+classify_pipeline	error: missing file	0.02	{...}
+
+Very useful for:
+
+debugging
+
+workflow tracking
+
+reproducibility
+
+🎯 Example Commands
+Simulation
+python3 scripts/main2.py simulate \
+    --pre-input data/prot_mammals \
+    --pre-output results/preprocessed \
+    --minseq 5 \
+    --maxsites 2000 \
+    --minsites 100 \
+    --alphabet aa \
+    --align results/preprocessed/clean_data \
+    --tree data/prot_mammals/trees \
+    --config backup/config/bpp/aa/WAG_frequencies.bpp \
+    --sim-output results/simulations \
+    --ext_rate 0.3 \
+    --tree-output results/trees \
+    --metrics-output results/metrics
+
+Classification (Run1 only)
+python3 scripts/main2.py classify \
+    --real-align results/preprocessed/clean_data \
+    --sim-align results/simulations \
+    --output results/classification \
+    --config backup/config_template.json \
+    --tools backup/
+
+Run1 + Run2 (refined)
+python3 scripts/main2.py classify \
+    --real-align results/preprocessed/clean_data \
+    --sim-align results/simulations \
+    --output results/classification \
+    --config backup/config_template.json \
+    --tools backup/ \
+    --two-iterations
+
+Run1 + Run2 + PDF Report
+python3 scripts/main2.py classify \
+    --real-align results/preprocessed/clean_data \
+    --sim-align results/simulations \
+    --output results/classification \
+    --config backup/config_template.json \
+    --tools backup/ \
+    --two-iterations \
+    --report-output results/classification/final_report.pdf
+
+Dashboard
+python3 scripts/main2.py visualisation
+
+❗ Troubleshooting & FAQ
+1. The simulation step fails with a Bio++ error
+
+Check:
+
+the .bpp config file syntax
+
+path to bppseqgen
+
+alphabet match (aa or dna)
+
+2. Trees are empty or missing
+
+Verify:
+
+tree inference tools installed
+
+correct file extensions for simulated alignments
+
+3. Classification fails
+
+Common issues:
+
+malformed JSON config
+
+missing ML models in --tools folder
+
+inconsistent sequence alphabets
+
+4. Dashboard cannot start
+
+Make sure:
+
+pip install dash
+
+
+and that no other program occupies port 8050.
+
+🎉 End of Documentation
+
+If you'd like, I can also generate:
+
+a short version,
+
+a multi-file documentation,
+
+a PDF version,
+
+or diagram visualizations.
+
+Just tell me!
