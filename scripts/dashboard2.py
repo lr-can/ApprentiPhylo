@@ -777,18 +777,37 @@ def make_app():
         """Render the main tab content depending on which tab is active."""
         try:
             if tab == "tab-sim":
-                # load metrics
-                metrics_file = results_path() / "metrics" / "phylo_metrics.csv"
+                metrics_file = results_path() / "metrics_results" / "mpd_results.csv"
                 if metrics_file.exists():
                     df = safe_read_csv(metrics_file)
                     if df.empty:
                         return html.Div("Metrics file exists but could not be read or is empty.")
-                    # build figures
-                    fig_hist = px.histogram(df, x="MPD", nbins=40, title="MPD distribution")
-                    fig_scatter = px.scatter(df, x="n_leaves", y="MPD", title="MPD vs n_leaves")
-                    return html.Div([dcc.Graph(figure=fig_hist), dcc.Graph(figure=fig_scatter)])
+
+                    # Histogramme MPD
+                    fig_hist = px.histogram(
+                        df, x="MPD", nbins=40, title="MPD – Histogramme",
+                        marginal="box"
+                    )
+
+                    # Courbe de distribution (KDE)
+                    fig_kde = px.density_contour(
+                        df, x="MPD", marginal_y="violin", title="MPD – Distribution KDE"
+                    )
+
+
+                    # Scatter MPD vs n_leaves
+                    fig_scatter = px.scatter(
+                        df, x="n_leaves", y="MPD", title="MPD vs n_leaves"
+                    )
+
+                    return html.Div([
+                        dcc.Graph(figure=fig_hist),
+                        dcc.Graph(figure=fig_kde),
+                        dcc.Graph(figure=fig_scatter)
+                    ])
                 else:
-                    return html.Div("No metrics file found at results/metrics/phylo_metrics.csv")
+                    return html.Div("No metrics file found at results/metrics_results/mpd_results.csv")
+
 
             elif tab == "tab-classif":
                 classif_dir = results_path() / "classification"

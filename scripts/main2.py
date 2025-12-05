@@ -11,19 +11,25 @@ Logging goes into logs/pipeline_log.csv.
 import argparse
 import time
 import csv
+import os
 from pathlib import Path
+import logging
+
 
 from preprocess import Preprocess
+from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from simulation import BppSimulator
 from compute_tree import ComputingTrees
-from phylo_metrics import tree_summary
 from classification import run_classification
 from analyse_classif import process_classification_results
 from fix_logreg_history import generate_logreg_train_history
 from dashboard2 import run_dashboard
 from analyse_predictions_plotly import main as generate_plotly_plots
+from phylo_metrics import compute_metrics_for_pair
 
 
+logging.basicConfig(level=logging.INFO)
 
 # === LOGGING ===
 def log_step(step_name, args_dict, status, start_time):
@@ -50,7 +56,7 @@ def simulate_cmd(args):
     global_start = time.time()
 
     try:
-        print("\n[1/4] Preprocessing input alignments...")
+        print("\n[1/3] Preprocessing input alignments...")
         pr = Preprocess(
             input_dir=args.pre_input,
             output_dir=args.pre_output,
@@ -67,7 +73,7 @@ def simulate_cmd(args):
         clean_align_dir = Path(args.align)
         print(f"Clean alignments ready in: {clean_align_dir}")
 
-        print("\n[2/4] Running simulations...")
+        print("\n[2/3] Running simulations...")
         config_file = args.config[0] if isinstance(args.config, list) else args.config
         bpp_sim = BppSimulator(
             align=str(clean_align_dir),
@@ -78,21 +84,9 @@ def simulate_cmd(args):
         )
         bpp_sim.simulate()
 
-        print("\n[3/4] Computing trees...")
+        print("\n[3/3] Computing trees...")
         tree_cp = ComputingTrees(args.sim_output, args.tree_output, args.alphabet)
         tree_cp.compute_all_trees()
-
-        print("\n[4/4] Computing phylogenetic metrics (MPD)...")
-        metrics_dir = Path(args.metrics_output)
-        metrics_dir.mkdir(parents=True, exist_ok=True)
-        out_csv = metrics_dir / "phylo_metrics.csv"
-        with open(out_csv, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["tree", "MPD", "n_leaves"])
-            writer.writeheader()
-            for tree_file in Path(args.tree_output).glob("*.nw*"):
-                m = tree_summary(tree_file)
-                writer.writerow({"tree": tree_file.name, **m})
-        print(f"Metrics saved to {out_csv}")
 
         log_step("simulate_pipeline", vars(args), "success", global_start)
         print("\nSimulation pipeline completed successfully!")
@@ -101,6 +95,57 @@ def simulate_cmd(args):
         log_step("simulate_pipeline", vars(args), f"error: {e}", global_start)
         print(f"\nSimulation pipeline failed: {e}")
         raise
+
+
+# === METRICS ===
+def run_metrics(args):
+    emp_dir = os.path.abspath(args.empirical)
+    sim_dir = os.path.abspath(args.simulation)
+    outdir = os.path.abspath(args.output)
+    os.makedirs(outdir, exist_ok=True)
+
+    emp_files = sorted([f for f in os.listdir(emp_dir) if f.endswith('.fasta')])
+    sim_files = sorted([f for f in os.listdir(sim_dir) if f.endswith('.fasta')])
+
+    # match by prefix instead of exact name
+    matching = []
+    for e in emp_files:
+        prefix = os.path.splitext(e)[0]
+        for s in sim_files:
+            if os.path.splitext(s)[0] == prefix:
+                matching.append((os.path.join(emp_dir, e), os.path.join(sim_dir, s)))
+                break
+
+    pbar = tqdm(total=len(matching), desc="Metrics", ncols=80)
+    results = []
+
+    # calcul des métriques en parallèle
+    with ProcessPoolExecutor(max_workers=args.threads) as ex:
+        futs = [ex.submit(compute_metrics_for_pair, e, s, outdir) for e, s in matching]
+        for f in as_completed(futs):
+            basename, mpd, n_leaves = f.result()
+            results.append({
+                "File": basename,
+                "MPD": mpd if mpd is not None else "NA",
+                "n_leaves": n_leaves
+            })
+            pbar.update(1)
+
+    pbar.close()
+
+    res_dir = os.path.join(outdir, "metrics_results")
+    os.makedirs(res_dir, exist_ok=True)
+    outfile = os.path.join(res_dir, "mpd_results.csv")
+
+    # écrire toutes les lignes dans le CSV
+    with open(outfile, "w", newline="") as csvfile:
+        fieldnames = ["File", "MPD", "n_leaves"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in results:
+            writer.writerow(row)
+
+    logging.info(f"MPD results written to: {outfile}")
 
 
 # === CLASSIFICATION ===
@@ -170,8 +215,17 @@ def main():
     p_sim.add_argument("--sim-output", required=True)
     p_sim.add_argument("--ext_rate", "-e", required=True)
     p_sim.add_argument("--tree-output", required=True)
-    p_sim.add_argument("--metrics-output", required=True)
     p_sim.set_defaults(func=simulate_cmd)
+
+
+    # --- METRICS ---
+    p_met = subparsers.add_parser("metrics", help="Compute MPD between real and simulated sequences")
+    p_met.add_argument("--empirical", help="Empirical FASTA directory")
+    p_met.add_argument("--simulation", help="Simulated FASTA directory")
+    p_met.add_argument("--output", default="results", help="Output directory")
+    p_met.add_argument("--threads", type=int, default=4)
+    p_met.set_defaults(func=run_metrics)
+
 
     # --- CLASSIFY ---
     p_cls = subparsers.add_parser("classify", help="Run classification pipeline")
@@ -212,9 +266,16 @@ python3 scripts/main2.py simulate \
     --sim-output results/simulations \
     --ext_rate 0.3 \
     --tree-output results/trees \
-    --metrics-output results/metrics
 
+    
+# --- METRICS ---
+python3 scripts/main2.py metrics \
+    --empirical results/preprocessed/clean_data \
+    --simulation results/simulations/ \
+    --output results \
+    --threads 8                            
 
+    
 # --- CLASSIFY : RUN 1 SEULEMENT ---
 python3 scripts/main2.py classify \
     --real-align results/preprocessed/clean_data \
@@ -244,6 +305,7 @@ python3 scripts/main2.py classify \
     --two-iterations \
     --report-output results/classification/final_report.pdf
 
+    
 # --- VISUALISATION ---
 python3 scripts/main2.py visualisation
 """
