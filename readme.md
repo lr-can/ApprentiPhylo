@@ -82,7 +82,62 @@ The required libraries are:
 For detailed installation instructions, see the official guide:  
 https://github.com/BioPP/bpp-documentation.wiki.git
 
-## 3. Cloning
+## 3. Installation
+You can install the project automatically (recommended) or manually.
+
+### 3.1 Automatic installation (recommended)
+
+Clone the repository:
+```
+git clone <URL_of_this_repository>
+cd <repository_name>
+```
+
+Then run the installation script:
+```
+bash install.sh
+```
+
+This script will:
+
+- Create a dedicated Python virtual environment in Project_environment/
+
+- Activate the environment
+
+- Install all required Python dependencies from requirements.txt
+
+After installation, you can activate the environment at any time with:
+```
+source Project_environment/bin/activate
+```
+
+### 3.2 Manual installation
+
+If you prefer to install everything manually:
+
+- Clone the repository
+```
+git clone <URL_of_this_repository>
+cd <repository_name>
+```
+
+- Create and activate a virtual environment
+```
+python3 -m venv .venv
+source Project_environment/bin/activate
+```
+
+- Install Python dependencies
+```
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+- (Optional) Ensure external tools are accessible:
+```
+which FastTree
+which bppseqgen
+```
 
 # 📁 Directory Structure
 
