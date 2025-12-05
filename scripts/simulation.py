@@ -2,9 +2,7 @@
 simulation.py
 ==============
 Module principal pour la simulation d’alignements.  
-Permet deux modes :
- - 'esm' : simulation avec un modèle de langage de protéines (ESM).
- - 'bpp' : simulation phylogénétique via Bio++ (BPP).  
+Permet la simulation phylogénétique via Bio++ (BPP).  
 Les résultats sont enregistrés dans un dossier dédié et peuvent être accompagnés d’un rapport PDF.
 """
 
@@ -16,115 +14,6 @@ import re
 import sys
 import time
 from tqdm import tqdm
-
-
-class AddGap:
-    """
-    Ajoute les motifs de gaps des alignements empiriques aux simulations.
-    Attrs:
-        empirical (str): Dossier des alignements empiriques.
-        simulate (str): Dossier des alignements simulés.
-        output (str): Dossier de sortie pour les alignements simulés avec gaps.
-    """
-
-    def __init__(self, empirical, simulate, output):
-        self.empirical = Path(empirical)
-        self.simulate = Path(simulate)
-        self.output = Path(output)
-        self.output.mkdir(parents=True, exist_ok=True)
-        self.add_gap()
-
-    def add_gap(self):
-        """
-        Ajoute les gaps aux séquences simulées en se basant sur les alignements empiriques.
-        Args:
-            None
-        Returns:
-            None
-        """
-        for file in self.simulate.iterdir():
-            if file.suffix != ".fasta":
-                continue
-
-            empirical_file = self.empirical / f"{file.stem}.fasta"
-            if not empirical_file.exists():
-                print(f"Empirical file missing for {file.name}")
-                continue
-
-            simul_sequences = list(SeqIO.parse(file, "fasta"))
-            empirical_sequences = list(SeqIO.parse(empirical_file, "fasta"))
-
-            for nb_seq, sequence in enumerate(simul_sequences):
-                index_gap = [i for i, char in enumerate(sequence.seq) if char in {'-', '_'}]
-                if nb_seq < len(empirical_sequences):
-                    seq_list = list(empirical_sequences[nb_seq].seq)
-                    for idx in index_gap:
-                        if idx < len(seq_list):
-                            seq_list[idx] = '-'
-                    empirical_sequences[nb_seq].seq = ''.join(seq_list)
-
-            SeqIO.write(empirical_sequences, self.output / file.name, "fasta")
-
-
-class ESMsimulator:
-    """
-    Simulation basée sur ESM (Evolutionary Scale Modeling).
-    Attrs:
-        align (str): Dossier des alignements d’entrée.
-        tree (str): Dossier des arbres phylogénétiques.
-        output (str): Dossier de sortie pour les alignements simulés.
-        tools (str): Dossier des outils nécessaires.
-    """
-    def __init__(self, align, tree, output, tools):
-        self.align = Path(align)
-        self.tree = Path(tree)
-        self.output = Path(output)
-        self.tools = Path(tools)
-
-        self.outputsim = self.output / 'ESM'
-        self.outputsim.mkdir(parents=True, exist_ok=True)
-
-    def simulate(self, gap=False):
-        """
-        Lance les simulations d’alignements avec ESM.
-        Args:
-            gap (bool): Indique si les gaps doivent être ajoutés après simulation.
-        Returns:
-            None
-        """
-        for align_name in self.align.iterdir():
-            if align_name.suffix != ".fasta":
-                continue
-
-            sequences = list(SeqIO.parse(align_name, "fasta"))
-            if not sequences:
-                continue
-
-            n_seq = random.randint(0, len(sequences) - 1)
-            seq = sequences[n_seq].seq
-
-            famname = align_name.stem
-            tree_path = self.tree / f"{famname}.nwk"
-            output_file = self.outputsim / f"{famname}.fasta"
-
-            command = [
-                "python",
-                str(self.tools / "simulatewithesm" / "src" / "simulateGillespie.py"),
-                f"--tree={tree_path}",
-                "--rescale=1.0",
-                f"--output={output_file}",
-                "--useesm",
-                f"--inputseq={seq}",
-                "--model-location=esm2_t6_8M_UR50D"
-            ]
-            subprocess.run(command, check=True)
-
-        print("Simulations Done...")
-
-        if gap:
-            print("Adding gaps...")
-            AddGap(self.align, self.outputsim, self.output / 'ESM_gap')
-            print("Done.")
 
 
 class BppSimulator:

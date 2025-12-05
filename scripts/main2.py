@@ -14,6 +14,8 @@ import csv
 import os
 from pathlib import Path
 import logging
+import yaml
+import sys
 
 
 from preprocess import Preprocess
@@ -30,6 +32,59 @@ from phylo_metrics import compute_metrics_for_pair
 
 
 logging.basicConfig(level=logging.INFO)
+
+
+# === YAML CONFIG LOADING ===
+def load_yaml_config(yaml_path):
+    """Load configuration from YAML file."""
+    try:
+        with open(yaml_path, 'r') as f:
+            config = yaml.safe_load(f)
+        return config
+    except Exception as e:
+        print(f"Error loading YAML config: {e}")
+        sys.exit(1)
+
+
+def check_yaml_conflict(args, parser):
+    """Check if --yaml is used with other flags (which is not allowed)."""
+    if hasattr(args, 'yaml') and args.yaml:
+        # Get parser defaults to compare
+        defaults = {}
+        for action in parser._actions:
+            if action.dest not in ['help', 'yaml', 'command', 'func']:
+                defaults[action.dest] = action.default
+        
+        # Check which arguments were explicitly set by user (differ from defaults)
+        explicit_args = []
+        for arg, value in vars(args).items():
+            if arg in ['yaml', 'command', 'func']:
+                continue
+            
+            # Compare with default value
+            default_val = defaults.get(arg)
+            if value != default_val:
+                explicit_args.append(arg)
+        
+        if explicit_args:
+            print("ERROR: You cannot use --yaml with other flags.")
+            print("Choose one of:")
+            print("  1. Use --yaml config.yaml (loads all settings from YAML)")
+            print("  2. Use individual flags (--pre-input, --pre-output, etc.)")
+            print(f"\nConflicting flags detected: {', '.join(explicit_args)}")
+            sys.exit(1)
+
+
+def apply_yaml_config(args, config, command):
+    """Apply YAML configuration to args namespace."""
+    if command not in config:
+        print(f"ERROR: Command '{command}' not found in YAML config.")
+        sys.exit(1)
+    
+    cmd_config = config[command]
+    for key, value in cmd_config.items():
+        setattr(args, key.replace('-', '_'), value)
+
 
 # === LOGGING ===
 def log_step(step_name, args_dict, status, start_time):
@@ -203,18 +258,19 @@ def main():
 
     # --- SIMULATE ---
     p_sim = subparsers.add_parser("simulate", help="Run simulation pipeline")
-    p_sim.add_argument("--pre-input", required=True)
-    p_sim.add_argument("--pre-output", required=True)
-    p_sim.add_argument("--minseq", type=int, required=True)
-    p_sim.add_argument("--maxsites", type=int, required=True)
-    p_sim.add_argument("--minsites", type=int, required=True)
-    p_sim.add_argument("--alphabet", choices=["aa","dna"], required=True)
-    p_sim.add_argument("--align", "-a", required=True)
-    p_sim.add_argument("--tree", "-t", required=True)
-    p_sim.add_argument("--config", "-c", required=True)
-    p_sim.add_argument("--sim-output", required=True)
-    p_sim.add_argument("--ext_rate", "-e", required=True)
-    p_sim.add_argument("--tree-output", required=True)
+    p_sim.add_argument("--yaml", type=str, help="Path to YAML config file")
+    p_sim.add_argument("--pre-input", required=False)
+    p_sim.add_argument("--pre-output", required=False)
+    p_sim.add_argument("--minseq", type=int, required=False)
+    p_sim.add_argument("--maxsites", type=int, required=False)
+    p_sim.add_argument("--minsites", type=int, required=False)
+    p_sim.add_argument("--alphabet", choices=["aa","dna"], required=False)
+    p_sim.add_argument("--align", "-a", required=False)
+    p_sim.add_argument("--tree", "-t", required=False)
+    p_sim.add_argument("--config", "-c", required=False)
+    p_sim.add_argument("--sim-output", required=False)
+    p_sim.add_argument("--ext_rate", "-e", required=False)
+    p_sim.add_argument("--tree-output", required=False)
     p_sim.set_defaults(func=simulate_cmd)
 
 
@@ -229,22 +285,60 @@ def main():
 
     # --- CLASSIFY ---
     p_cls = subparsers.add_parser("classify", help="Run classification pipeline")
-    p_cls.add_argument("--real-align", required=True)
-    p_cls.add_argument("--sim-align", required=True)
-    p_cls.add_argument("--output", required=True)
-    p_cls.add_argument("--config", required=True)
-    p_cls.add_argument("--tools", required=True)
-    p_cls.add_argument("--report-output", required=False, help="Optional PDF report output path")
-    p_cls.add_argument("--two-iterations", action="store_true", help="Enable Run1 + Run2 refinement")
-    p_cls.add_argument("--threshold", type=float, default=0.5, help="Threshold to classify sims as REAL")
+    p_cls.add_argument("--yaml", type=str, help="Path to YAML config file")
+    p_cls.add_argument("--real-align", required=False, default=None)
+    p_cls.add_argument("--sim-align", required=False, default=None)
+    p_cls.add_argument("--output", required=False, default=None)
+    p_cls.add_argument("--config", required=False, default=None)
+    p_cls.add_argument("--tools", required=False, default=None)
+    p_cls.add_argument("--report-output", required=False, default=None, help="Optional PDF report output path")
+    p_cls.add_argument("--two-iterations", action="store_true", default=False, help="Enable Run1 + Run2 refinement")
+    p_cls.add_argument("--threshold", type=float, default=None, help="Threshold to classify sims as REAL")
     p_cls.set_defaults(func=classify_cmd)
-
     
     # --- Visualisation Dashboard ---
     p_dash = subparsers.add_parser("visualisation", help="Launch the Dash dashboard")
     p_dash.set_defaults(func=lambda args: run_dashboard())
 
     args = parser.parse_args()
+
+    # Handle YAML configuration
+    if hasattr(args, 'yaml') and args.yaml:
+        # Get the appropriate subparser for conflict checking
+        subparser = None
+        if args.command == "simulate":
+            subparser = p_sim
+        elif args.command == "classify":
+            subparser = p_cls
+        
+        if subparser:
+            check_yaml_conflict(args, subparser)
+        
+        config = load_yaml_config(args.yaml)
+        apply_yaml_config(args, config, args.command)
+    else:
+        # Validate that required arguments are present when not using YAML
+        if args.command == "simulate":
+            required = ['pre_input', 'pre_output', 'minseq', 'maxsites', 'minsites', 
+                       'alphabet', 'align', 'tree', 'config', 'sim_output', 'ext_rate', 
+                       'tree_output', 'metrics_output']
+            missing = [arg for arg in required if getattr(args, arg, None) is None]
+            if missing:
+                print(f"ERROR: Missing required arguments: {', '.join(missing)}")
+                print("Use --yaml config.yaml or provide all required flags.")
+                sys.exit(1)
+        elif args.command == "classify":
+            required = ['real_align', 'sim_align', 'output', 'config', 'tools']
+            missing = [arg for arg in required if getattr(args, arg, None) is None]
+            if missing:
+                print(f"ERROR: Missing required arguments: {', '.join(missing)}")
+                print("Use --yaml config.yaml or provide all required flags.")
+                sys.exit(1)
+        
+        # Set default threshold if not provided
+        if args.command == "classify" and args.threshold is None:
+            args.threshold = 0.5
+    
     args.func(args)
 
 
@@ -254,6 +348,12 @@ if __name__ == "__main__":
 
 # === COMMANDES EXEMPLES (TEST QUICK-START) ===
 """
+# --- AVEC YAML ---
+python3 scripts/main2.py simulate --yaml config/simulate.yaml
+python3 scripts/main2.py classify --yaml config/classify.yaml
+python3 scripts/main2.py classify --yaml config/yaml/classify_full.yaml
+
+
 # --- SIMULATION ---
 python3 scripts/main2.py simulate \
     --pre-input data/prot_mammals \

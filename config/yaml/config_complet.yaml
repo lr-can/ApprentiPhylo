@@ -1,0 +1,27 @@
+# === config_complet.yaml ===
+# Fichier avec les deux commandes (vous pouvez garder les deux configs dans un seul fichier)
+
+simulate:
+  pre-input: data/prot_mammals
+  pre-output: results/preprocessed
+  minseq: 5
+  maxsites: 2000
+  minsites: 100
+  alphabet: aa
+  align: results/preprocessed/clean_data
+  tree: data/prot_mammals/trees
+  config: config/bpp/aa/WAG_frequencies.bpp
+  sim-output: results/simulations
+  ext_rate: 0.3
+  tree-output: results/trees
+  metrics-output: results/metrics
+
+classify:
+  real-align: results/preprocessed/clean_data
+  sim-align: results/simulations
+  output: results/classification
+  config: config/config_template.json
+  tools: backup/
+  two-iterations: true
+  threshold: 0.5
+  report-output: results/classification/final_report.pdf

@@ -1,0 +1,14 @@
+# === classify.yaml ===
+# Configuration pour la commande classify (Run 1 seulement)
+# Usage: python3 scripts/main2.py classify --yaml config/classify.yaml
+
+classify:
+  real-align: results/preprocessed/clean_data
+  sim-align: results/simulations
+  output: results/classification
+  config: config/config_template.json
+  tools: backup/
+  two-iterations: false
+  threshold: 0.5
+  # report-output: results/classification/final_report.pdf  # Optionnel
+  
