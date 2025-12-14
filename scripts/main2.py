@@ -349,8 +349,8 @@ if __name__ == "__main__":
 # === COMMANDES EXEMPLES (TEST QUICK-START) ===
 """
 # --- AVEC YAML ---
-python3 scripts/main2.py simulate --yaml config/simulate.yaml
-python3 scripts/main2.py classify --yaml config/classify.yaml
+python3 scripts/main2.py simulate --yaml config/yaml/simulate.yaml
+python3 scripts/main2.py classify --yaml config/yaml/classify.yaml
 python3 scripts/main2.py classify --yaml config/yaml/classify_full.yaml
 
 
