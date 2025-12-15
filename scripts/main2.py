@@ -16,6 +16,7 @@ from pathlib import Path
 import logging
 import yaml
 import sys
+import json
 
 
 from preprocess import Preprocess
@@ -106,6 +107,81 @@ def log_step(step_name, args_dict, status, start_time):
         })
 
 
+# === HELPER FUNCTIONS ===
+def find_default_bpp_config(alphabet="aa"):
+    """
+    Find default BPP configuration file in backup directory or project root.
+    Prioritizes WAG_frequencies.bpp and files with WAG or frequencies in name.
+    Returns the first matching .bpp file found, or None if not found.
+    """
+    project_root = Path(__file__).parent.parent
+    backup_dir = project_root / "backup"
+    
+    # Try common paths in backup first
+    possible_paths = [
+        backup_dir / "config" / "bpp" / alphabet / "WAG_frequencies.bpp",
+        backup_dir / "config" / "bpp" / f"{alphabet}_config.bpp",
+        backup_dir / "config" / f"{alphabet}.bpp",
+        backup_dir / f"config_{alphabet}.bpp",
+    ]
+    
+    for path in possible_paths:
+        if path.exists():
+            return str(path)
+    
+    # Search for WAG_frequencies.bpp specifically (highest priority)
+    for wag_file in project_root.rglob("WAG_frequencies.bpp"):
+        return str(wag_file)
+    
+    # Search for files with "WAG" or "frequencies" in name (high priority)
+    exclude_dirs = {".git", "__pycache__", ".venv", "venv", "node_modules", ".pytest_cache"}
+    wag_candidates = []
+    for bpp_file in project_root.rglob("*.bpp"):
+        if any(excluded in bpp_file.parts for excluded in exclude_dirs):
+            continue
+        file_name_lower = bpp_file.name.lower()
+        if "wag" in file_name_lower or "frequencies" in file_name_lower:
+            wag_candidates.append(bpp_file)
+    
+    if wag_candidates:
+        # Prefer files in config directories
+        for candidate in wag_candidates:
+            parts_lower = [str(p).lower() for p in candidate.parts]
+            if any("config" in part for part in parts_lower):
+                return str(candidate)
+        # Return first WAG/frequencies file found
+        return str(wag_candidates[0])
+    
+    # Search recursively in backup (medium priority)
+    if backup_dir.exists():
+        for bpp_file in backup_dir.rglob("*.bpp"):
+            return str(bpp_file)
+    
+    # If not found in backup, search in project root (excluding some directories)
+    # Prefer files in config directories
+    config_candidates = []
+    for bpp_file in project_root.rglob("*.bpp"):
+        if any(excluded in bpp_file.parts for excluded in exclude_dirs):
+            continue
+        parts_lower = [str(p).lower() for p in bpp_file.parts]
+        if any("config" in part for part in parts_lower) or any("bpp" in part for part in parts_lower):
+            config_candidates.append(bpp_file)
+    
+    if config_candidates:
+        return str(config_candidates[0])
+    
+    # Last resort: return any .bpp file found (but skip Examples directories)
+    for bpp_file in project_root.rglob("*.bpp"):
+        if any(excluded in bpp_file.parts for excluded in exclude_dirs):
+            continue
+        # Skip Examples directories as they are usually not suitable for simulation
+        if "Examples" in bpp_file.parts:
+            continue
+        return str(bpp_file)
+    
+    return None
+
+
 # === SIMULATION ===
 def simulate_cmd(args):
     global_start = time.time()
@@ -130,6 +206,24 @@ def simulate_cmd(args):
 
         print("\n[2/3] Running simulations...")
         config_file = args.config[0] if isinstance(args.config, list) else args.config
+        
+        if not config_file:
+            raise ValueError("--config is required. Please provide a BPP configuration file path.")
+        
+        config_path = Path(config_file)
+        # Try to resolve relative paths
+        if not config_path.is_absolute():
+            config_path = Path.cwd() / config_path
+        
+        if not config_path.exists():
+            raise FileNotFoundError(
+                f"BPP config file not found: {config_file}\n"
+                f"Resolved path: {config_path}\n"
+                "Please provide a valid --config path."
+            )
+        
+        config_file = str(config_path.resolve())
+        print(f"Using config file: {config_file}")
         bpp_sim = BppSimulator(
             align=str(clean_align_dir),
             tree=str(args.tree),
@@ -210,6 +304,40 @@ def classify_cmd(args):
     try:
         print("\n[1/3] Running classification pipeline...")
         
+        # Prepare simulation config for run2 if provided
+        sim_config_2 = None
+        if args.two_iterations:
+            # First, try to load from provided arguments
+            if args.sim_config_2:
+                # Load from JSON file
+                with open(args.sim_config_2, "r") as f:
+                    sim_config_2 = json.load(f)
+                print(f"Loaded simulation config for run2 from {args.sim_config_2}")
+            elif args.sim_tree_2 and args.sim_alphabet_2:
+                # Build config from individual arguments
+                if not args.config:
+                    raise ValueError("--config is required when building sim_config from individual arguments")
+                sim_config_2 = {
+                    "config": args.config,
+                    "tree": args.sim_tree_2,
+                    "alphabet": args.sim_alphabet_2,
+                }
+                if args.sim_ext_rate_2 is not None:
+                    sim_config_2["ext_rate"] = args.sim_ext_rate_2
+                print(f"Built simulation config for run2 from arguments")
+            else:
+                # Check if config exists in run_1/store_1 (from a previous run)
+                output_path = Path(args.output) if args.output else Path("results/classification")
+                store_config_path = output_path / "run_1" / "store_1" / "sim_config.json"
+                
+                if store_config_path.exists():
+                    print(f"Found simulation config in {store_config_path}")
+                    with open(store_config_path, "r") as f:
+                        sim_config_2 = json.load(f)
+                else:
+                    # Config will be checked and error raised in pipeline if needed
+                    print("Warning: No simulation config provided for run2. Will check in run_1/store_1 after run1.")
+        
         run_classification(
             realali=args.real_align,
             simali=args.sim_align,
@@ -217,7 +345,8 @@ def classify_cmd(args):
             config=args.config,
             tools=args.tools,
             two_iterations=args.two_iterations,
-            threshold=args.threshold
+            threshold=args.threshold,
+            sim_config_2=sim_config_2
         )
 
         print("\nClassification pipeline (iterations) completed.")
@@ -294,6 +423,14 @@ def main():
     p_cls.add_argument("--report-output", required=False, default=None, help="Optional PDF report output path")
     p_cls.add_argument("--two-iterations", action="store_true", default=False, help="Enable Run1 + Run2 refinement")
     p_cls.add_argument("--threshold", type=float, default=None, help="Threshold to classify sims as REAL")
+    p_cls.add_argument("--2simconfig", dest="sim_config_2", type=str, required=False, default=None,
+                       help="Path to simulation config JSON for run2. Required if not stored in run_1/store_1.")
+    p_cls.add_argument("--2simtree", dest="sim_tree_2", type=str, required=False, default=None,
+                       help="Path to tree directory for run2 simulation")
+    p_cls.add_argument("--2simextrate", dest="sim_ext_rate_2", type=float, required=False, default=None,
+                       help="External branch rate for run2 simulation")
+    p_cls.add_argument("--2simalphabet", dest="sim_alphabet_2", choices=["aa", "dna"], required=False, default=None,
+                       help="Alphabet for run2 simulation")
     p_cls.set_defaults(func=classify_cmd)
     
     # --- Visualisation Dashboard ---
@@ -321,7 +458,7 @@ def main():
         if args.command == "simulate":
             required = ['pre_input', 'pre_output', 'minseq', 'maxsites', 'minsites', 
                        'alphabet', 'align', 'tree', 'config', 'sim_output', 'ext_rate', 
-                       'tree_output', 'metrics_output']
+                       'tree_output']
             missing = [arg for arg in required if getattr(args, arg, None) is None]
             if missing:
                 print(f"ERROR: Missing required arguments: {', '.join(missing)}")
@@ -358,14 +495,16 @@ python3 scripts/main2.py classify --yaml config/yaml/classify_full.yaml
 python3 scripts/main2.py simulate \
     --pre-input data/prot_mammals \
     --pre-output results/preprocessed \
-    --minseq 5 --maxsites 2000 --minsites 100 \
+    --minseq 5 \
+    --maxsites 2000 \
+    --minsites 100 \
     --alphabet aa \
     --align results/preprocessed/clean_data \
     --tree data/prot_mammals/trees \
     --config backup/config/bpp/aa/WAG_frequencies.bpp \
     --sim-output results/simulations \
     --ext_rate 0.3 \
-    --tree-output results/trees \
+    --tree-output results/trees
 
     
 # --- METRICS ---

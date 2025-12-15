@@ -29,7 +29,7 @@ zipp==3.23.0
 matplotlib==3.10.3
 uv==0.9.8
 torch==2.9.0
-pytorch-ignite==0.5.3
+pytorch-ignite==0.5.2
 fpdf==1.7.2
 scikit-learn==1.7.2
 scipy==1.16.3
@@ -38,7 +38,6 @@ biopython==1.86
 polars==1.35.1
 torchmetrics==1.8.2
 pyarrow==22.0.0
-fastparquet==2024.11.0
 fastparquet==2024.11.0
 dash-bootstrap-components==2.0.4
 pyyaml==6.0.3

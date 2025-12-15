@@ -299,6 +299,147 @@ def get_best_predictions_run2():
         return None
 
 
+def create_run1_run2_scatter_plot(base_dir):
+    """Crée un scatter plot comparant les scores Run1 vs Run2 avec couleurs pour réel/simulé"""
+    try:
+        # Charger les prédictions Run1 et Run2
+        preds_run1_file = base_dir / "run_1" / "preds_run1.parquet"
+        preds_run2_file = base_dir / "run_2" / "preds_run2.parquet"
+        
+        if not preds_run1_file.exists() or not preds_run2_file.exists():
+            return None
+        
+        # Charger les données
+        if HAS_POLARS:
+            df_run1 = pl.read_parquet(preds_run1_file)
+            df_run2 = pl.read_parquet(preds_run2_file)
+            
+            # Convertir en pandas pour Plotly
+            df_run1_pd = df_run1.to_pandas()
+            df_run2_pd = df_run2.to_pandas()
+        else:
+            df_run1_pd = pd.read_parquet(preds_run1_file)
+            df_run2_pd = pd.read_parquet(preds_run2_file)
+        
+        # Identifier les colonnes de probabilité
+        prob_col_run1 = "prob_real" if "prob_real" in df_run1_pd.columns else None
+        prob_col_run2 = "prob_real" if "prob_real" in df_run2_pd.columns else None
+        
+        if not prob_col_run1 or not prob_col_run2:
+            return None
+        
+        # Identifier les colonnes de label (réel/simulé)
+        label_col = None
+        for col in ["target", "true_label", "label"]:
+            if col in df_run1_pd.columns:
+                label_col = col
+                break
+        
+        # Fusionner les données sur filename
+        df_merged = df_run1_pd[["filename", prob_col_run1]].merge(
+            df_run2_pd[["filename", prob_col_run2]],
+            on="filename",
+            how="inner",
+            suffixes=("_run1", "_run2")
+        )
+        
+        # Ajouter les labels si disponibles
+        if label_col and label_col in df_run1_pd.columns:
+            labels = df_run1_pd[["filename", label_col]].set_index("filename")[label_col].to_dict()
+            df_merged["label"] = df_merged["filename"].map(labels)
+            df_merged["label_text"] = df_merged["label"].map({0: "Simulé", 1: "Réel"})
+        else:
+            df_merged["label_text"] = "Inconnu"
+        
+        # Créer le scatter plot
+        fig = px.scatter(
+            df_merged,
+            x=f"{prob_col_run1}_run1",
+            y=f"{prob_col_run2}_run2",
+            color="label_text",
+            color_discrete_map={"Réel": "blue", "Simulé": "red", "Inconnu": "gray"},
+            hover_data=["filename"],
+            labels={
+                f"{prob_col_run1}_run1": "Score Run1 (prob_real)",
+                f"{prob_col_run2}_run2": "Score Run2 (prob_real)",
+                "label_text": "Type"
+            },
+            title="Comparaison des scores de prédiction Run1 vs Run2"
+        )
+        
+        # Ajouter une ligne diagonale (y=x)
+        max_val = max(df_merged[f"{prob_col_run1}_run1"].max(), df_merged[f"{prob_col_run2}_run2"].max())
+        min_val = min(df_merged[f"{prob_col_run1}_run1"].min(), df_merged[f"{prob_col_run2}_run2"].min())
+        fig.add_trace(go.Scatter(
+            x=[min_val, max_val],
+            y=[min_val, max_val],
+            mode='lines',
+            name='y=x',
+            line=dict(color='gray', width=1, dash='dash'),
+            showlegend=False
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            height=600,
+            hovermode='closest'
+        )
+        
+        return fig
+    
+    except Exception as e:
+        print(f"Erreur lors de la création du scatter plot: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+def get_new_simulation_stats(base_dir):
+    """Récupère les statistiques sur les nouvelles simulations générées dans Run2"""
+    try:
+        # Charger les prédictions des nouvelles simulations
+        new_sim_preds_file = base_dir / "run_2" / "new_sim_predictions.parquet"
+        
+        if not new_sim_preds_file.exists():
+            return None
+        
+        # Charger les données
+        if HAS_POLARS:
+            df = pl.read_parquet(new_sim_preds_file)
+            df_pd = df.to_pandas()
+        else:
+            df_pd = pd.read_parquet(new_sim_preds_file)
+        
+        # Compter le nombre total de nouvelles simulations générées
+        new_sim_dir = base_dir / "run_2" / "new_sim"
+        num_generated = len(list(new_sim_dir.glob("*.fasta"))) if new_sim_dir.exists() else 0
+        
+        # Identifier la colonne de probabilité
+        prob_col = "prob_real" if "prob_real" in df_pd.columns else None
+        if not prob_col:
+            return None
+        
+        # Calculer les statistiques
+        num_selected = len(df_pd[df_pd[prob_col] >= 0.5])  # Au-dessus du seuil
+        selection_rate = (num_selected / num_generated * 100) if num_generated > 0 else 0.0
+        median_score = df_pd[prob_col].median()
+        mean_score = df_pd[prob_col].mean()
+        
+        return {
+            "num_new_sims": num_generated,
+            "num_selected": num_selected,
+            "selection_rate": selection_rate,
+            "median_score": median_score,
+            "mean_score": mean_score
+        }
+    
+    except Exception as e:
+        print(f"Erreur lors du calcul des statistiques des nouvelles simulations: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 def get_run_statistics():
     """Récupère les statistiques sur les runs (données initiales, gardées après run 1 et run 2)"""
     base_dir = results_path() / "classification"
@@ -968,12 +1109,75 @@ def make_app():
                     html.Div(id="classifier-details"),
                 ])
                 
-               # ==========================================
-                # SECTION 4: MEILLEURES PRÉDICTIONS RUN 2
-                # + MPD vs score RUN2
+                # ==========================================
+                # SECTION 4: SCATTER PLOT RUN1 vs RUN2
+                # ==========================================
+                scatter_fig = create_run1_run2_scatter_plot(classif_dir)
+                if scatter_fig:
+                    children.extend([
+                        html.Hr(className="my-4"),
+                        html.H4("Comparaison des scores Run1 vs Run2", className="mb-3"),
+                        html.P(
+                            "Scatter plot montrant les scores de prédiction dans Run1 et Run2. "
+                            "Les couleurs indiquent si l'alignement est réel (bleu) ou simulé (rouge).",
+                            className="text-muted"
+                        ),
+                        dcc.Graph(figure=scatter_fig, id="scatter-run1-run2"),
+                        html.Hr(className="my-4"),
+                    ])
+                
+                # ==========================================
+                # SECTION 5: STATISTIQUES NOUVELLES SIMULATIONS
+                # ==========================================
+                new_sim_stats = get_new_simulation_stats(classif_dir)
+                if new_sim_stats:
+                    children.extend([
+                        html.H4("Statistiques sur les nouvelles simulations (Run2)", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Nombre de nouvelles simulations"),
+                                    dbc.CardBody([
+                                        html.H3(f"{new_sim_stats['num_new_sims']}", className="text-center"),
+                                        html.P("Simulations générées", className="text-muted text-center mb-0")
+                                    ])
+                                ])
+                            ], width=3),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Simulations sélectionnées"),
+                                    dbc.CardBody([
+                                        html.H3(f"{new_sim_stats['num_selected']}", className="text-center"),
+                                        html.P(f"({new_sim_stats['selection_rate']:.1f}%)", className="text-muted text-center mb-0")
+                                    ])
+                                ])
+                            ], width=3),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Score médian"),
+                                    dbc.CardBody([
+                                        html.H3(f"{new_sim_stats['median_score']:.3f}", className="text-center"),
+                                        html.P("Probabilité d'être réel", className="text-muted text-center mb-0")
+                                    ])
+                                ])
+                            ], width=3),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Score moyen"),
+                                    dbc.CardBody([
+                                        html.H3(f"{new_sim_stats['mean_score']:.3f}", className="text-center"),
+                                        html.P("Probabilité d'être réel", className="text-muted text-center mb-0")
+                                    ])
+                                ])
+                            ], width=3),
+                        ], className="mb-4"),
+                        html.Hr(className="my-4"),
+                    ])
+                
+                # ==========================================
+                # SECTION 6: MEILLEURES PRÉDICTIONS RUN 2
                 # ==========================================
                 best_preds_df = get_best_predictions_run2()
-
                 if best_preds_df is not None and not best_preds_df.empty:
                     children.extend([
                         html.Hr(className="my-4"),
@@ -981,14 +1185,13 @@ def make_app():
                         html.P([
                             f"Top {min(50, len(best_preds_df))} simulations classées par probabilité RUN 2. ",
                             html.Strong("Colonnes : "),
-                            "filename, prob_real_run1 (RUN 1), pred_class_run1, "
-                            "prob_real_run2 (RUN 2), pred_class_run2, longueur alignement, nombre de séquences"
+                            "filename, prob_real_run1 (RUN 1), pred_class_run1, prob_real_run2 (RUN 2), pred_class_run2, longueur alignement, nombre de séquences"
                         ], className="text-muted"),
                         dbc.Card([
                             dbc.CardBody([
                                 html.Div([
                                     dbc.Table.from_dataframe(
-                                        best_preds_df.head(50).round(4),
+                                        best_preds_df.head(50).round(4),  # Arrondir à 4 décimales
                                         striped=True,
                                         bordered=True,
                                         hover=True,
@@ -999,161 +1202,19 @@ def make_app():
                             ])
                         ], className="mb-4"),
                         html.P([
-                            html.Strong("Total: "),
+                            html.Strong(f"Total: "),
                             f"{len(best_preds_df)} simulations dans le RUN 2 | ",
                             html.Strong("Légende: "),
                             "pred_class: 0=Simulé, 1=Réel"
                         ], className="text-muted")
                     ])
-
-                    # --------------------------------------------------
-                    # MPD vs SCORE RUN2
-                    # --------------------------------------------------
-                    mpd_file = results_path() / "metrics_results" / "mpd_results.csv"
-                    if mpd_file.exists():
-                        try:
-                            df_mpd = pd.read_csv(mpd_file)
-
-                            # Harmoniser les noms pour la jointure
-                            df_run2 = best_preds_df.rename(columns={
-                                "filename": "File",
-                                "prob_real_run2": "RUN2_score"
-                            })
-
-                            # Merge MPD + RUN2
-                            df_joint = pd.merge(
-                                df_mpd,
-                                df_run2[["File", "RUN2_score", "pred_class_run2"]],
-                                on="File",
-                                how="inner"
-                            )
-
-                            if not df_joint.empty:
-                                fig_mpd_run2 = px.scatter(
-                                    df_joint,
-                                    x="RUN2_score",
-                                    y="MPD",
-                                    color="pred_class_run2",
-                                    hover_data=["File", "n_leaves"],
-                                    title="Relation entre MPD et score RUN2",
-                                    labels={
-                                        "RUN2_score": "Score RUN2 (probabilité REAL)",
-                                        "MPD": "Mean Pairwise Distance",
-                                        "pred_class_run2": "Classe RUN2"
-                                    }
-                                )
-
-                                fig_mpd_run2.update_layout(
-                                    template="plotly_white",
-                                    height=600
-                                )
-
-                                children.extend([
-                                    html.Hr(className="my-4"),
-                                    html.H4("MPD vs score RUN2", className="mb-3"),
-                                    html.P(
-                                        "Chaque point correspond à un alignement. "
-                                        "Ce graphique met en relation la distance phylogénétique (MPD) "
-                                        "et la probabilité d’être classé comme réel au RUN 2.",
-                                        className="text-muted"
-                                    ),
-                                    dcc.Graph(figure=fig_mpd_run2)
-                                ])
-                            else:
-                                children.append(
-                                    html.Div(
-                                        "Aucune correspondance trouvée entre MPD et RUN 2.",
-                                        className="alert alert-warning"
-                                    )
-                                )
-
-                        except Exception as e:
-                            children.append(
-                                html.Div(
-                                    f"Erreur lors de la génération du plot MPD vs RUN2: {e}",
-                                    className="alert alert-danger"
-                                )
-                            )
-                    else:
-                        children.append(
-                            html.Div(
-                                "Fichier MPD introuvable (results/metrics_results/mpd_results.csv).",
-                                className="alert alert-warning"
-                            )
-                        )
-
                 else:
                     children.extend([
                         html.Hr(className="my-4"),
-                        html.Div(
-                            "Aucune prédiction RUN 2 disponible. Vérifiez que le RUN 2 a été exécuté.",
-                            className="alert alert-warning"
-                        )
+                        html.Div("Aucune prédiction RUN 2 disponible. Vérifiez que le RUN 2 a été exécuté.", className="alert alert-warning")
                     ])
-
-
-            # ==========================================
-            # SECTION 5: CORRÉLATION RUN1 vs RUN2
-            # (séquences ayant passé le RUN1)
-            # ==========================================
-            if best_preds_df is not None and not best_preds_df.empty:
-
-                # On garde uniquement les séquences qui ont effectivement un score RUN2
-                df_run12 = best_preds_df.dropna(
-                    subset=["prob_real_run1", "prob_real_run2"]
-                ).copy()
-
-                if not df_run12.empty:
-                    fig_run1_run2 = px.scatter(
-                        df_run12,
-                        x="prob_real_run1",
-                        y="prob_real_run2",
-                        color="pred_class_run2",
-                        hover_data=["filename"],
-                        title="RUN1 vs RUN2 — Corrélation des scores",
-                        labels={
-                            "prob_real_run1": "Score RUN1 (probabilité REAL)",
-                            "prob_real_run2": "Score RUN2 (probabilité REAL)",
-                            "pred_class_run2": "Classe RUN2"
-                        }
-                    )
-
-                    # Ligne y = x (stabilité parfaite entre RUN1 et RUN2)
-                    fig_run1_run2.add_shape(
-                        type="line",
-                        x0=0, y0=0, x1=1, y1=1,
-                        line=dict(dash="dash", color="gray")
-                    )
-
-                    fig_run1_run2.update_layout(
-                        template="plotly_white",
-                        height=600
-                    )
-
-                    children.extend([
-                        html.Hr(className="my-4"),
-                        html.H4("RUN1 vs RUN2 — Analyse de la corrélation", className="mb-3"),
-                        html.P(
-                            "Ce graphique compare les scores de classification RUN1 et RUN2 "
-                            "pour les séquences ayant passé le RUN1. "
-                            "La diagonale représente une stabilité parfaite entre les deux itérations.",
-                            className="text-muted"
-                        ),
-                        dcc.Graph(figure=fig_run1_run2),
-                        html.P(
-                            "S'il n'y a pas de corrélation apparente, cela signifie que le classifieur change drastiquement entre RUN1 et RUN2 (pas du tout les mêmes critères en jeu)",
-                            className="text-muted"
-                        )
-                    ])
-                else:
-                    children.append(
-                        html.Div(
-                            "Aucune donnée exploitable pour la comparaison RUN1 vs RUN2.",
-                            className="alert alert-warning"
-                        )
-                    )
+                
                 return html.Div(children)
-
 
 
             elif tab == "tab-tree":
