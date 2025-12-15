@@ -307,13 +307,21 @@ def classify_cmd(args):
         # Prepare simulation config for run2 if provided
         sim_config_2 = None
         if args.two_iterations:
-            # First, try to load from provided arguments
-            if args.sim_config_2:
-                # Load from JSON file
-                with open(args.sim_config_2, "r") as f:
-                    sim_config_2 = json.load(f)
-                print(f"Loaded simulation config for run2 from {args.sim_config_2}")
-            elif args.sim_tree_2 and args.sim_alphabet_2:
+            # First, check if sim_config_2 is already a dict (from YAML)
+            if hasattr(args, 'sim_config_2') and args.sim_config_2 is not None:
+                if isinstance(args.sim_config_2, dict):
+                    sim_config_2 = args.sim_config_2
+                    print("Using sim_config_2 from YAML config (dict)")
+                elif isinstance(args.sim_config_2, str):
+                    # It's a path to a JSON file
+                    if Path(args.sim_config_2).exists():
+                        with open(args.sim_config_2, "r") as f:
+                            sim_config_2 = json.load(f)
+                        print(f"Loaded simulation config for run2 from {args.sim_config_2}")
+                    else:
+                        print(f"Warning: sim_config_2 path not found: {args.sim_config_2}")
+            # If not set yet, try individual arguments
+            if sim_config_2 is None and args.sim_tree_2 and args.sim_alphabet_2:
                 # Build config from individual arguments
                 if not args.config:
                     raise ValueError("--config is required when building sim_config from individual arguments")
@@ -326,17 +334,39 @@ def classify_cmd(args):
                     sim_config_2["ext_rate"] = args.sim_ext_rate_2
                 print(f"Built simulation config for run2 from arguments")
             else:
-                # Check if config exists in run_1/store_1 (from a previous run)
-                output_path = Path(args.output) if args.output else Path("results/classification")
-                store_config_path = output_path / "run_1" / "store_1" / "sim_config.json"
-                
-                if store_config_path.exists():
-                    print(f"Found simulation config in {store_config_path}")
-                    with open(store_config_path, "r") as f:
-                        sim_config_2 = json.load(f)
+                # Check if sim_config_2 was provided via YAML (as a dict or path)
+                if hasattr(args, 'sim_config_2') and args.sim_config_2:
+                    # Could be a dict (from YAML) or a path string
+                    if isinstance(args.sim_config_2, dict):
+                        sim_config_2 = args.sim_config_2
+                        print("Using sim_config_2 from YAML config")
+                    elif isinstance(args.sim_config_2, str) and Path(args.sim_config_2).exists():
+                        # It's a path to a JSON file
+                        with open(args.sim_config_2, "r") as f:
+                            sim_config_2 = json.load(f)
+                        print(f"Loaded simulation config for run2 from {args.sim_config_2}")
+                    else:
+                        # Try to load from run_1/store_1 (from a previous run)
+                        output_path = Path(args.output) if args.output else Path("results/classification")
+                        store_config_path = output_path / "run_1" / "store_1" / "sim_config.json"
+                        
+                        if store_config_path.exists():
+                            print(f"Found simulation config in {store_config_path}")
+                            with open(store_config_path, "r") as f:
+                                sim_config_2 = json.load(f)
+                        else:
+                            print("Warning: No simulation config provided for run2. New simulations will not be generated.")
                 else:
-                    # Config will be checked and error raised in pipeline if needed
-                    print("Warning: No simulation config provided for run2. Will check in run_1/store_1 after run1.")
+                    # Check if config exists in run_1/store_1 (from a previous run)
+                    output_path = Path(args.output) if args.output else Path("results/classification")
+                    store_config_path = output_path / "run_1" / "store_1" / "sim_config.json"
+                    
+                    if store_config_path.exists():
+                        print(f"Found simulation config in {store_config_path}")
+                        with open(store_config_path, "r") as f:
+                            sim_config_2 = json.load(f)
+                    else:
+                        print("Warning: No simulation config provided for run2. New simulations will not be generated.")
         
         run_classification(
             realali=args.real_align,
@@ -400,6 +430,7 @@ def main():
     p_sim.add_argument("--sim-output", required=False)
     p_sim.add_argument("--ext_rate", "-e", required=False)
     p_sim.add_argument("--tree-output", required=False)
+    p_sim.add_argument("--metrics-output", required=False, help="Output directory for metrics (optional)")
     p_sim.set_defaults(func=simulate_cmd)
 
 
@@ -459,6 +490,7 @@ def main():
             required = ['pre_input', 'pre_output', 'minseq', 'maxsites', 'minsites', 
                        'alphabet', 'align', 'tree', 'config', 'sim_output', 'ext_rate', 
                        'tree_output']
+            # metrics_output is optional
             missing = [arg for arg in required if getattr(args, arg, None) is None]
             if missing:
                 print(f"ERROR: Missing required arguments: {', '.join(missing)}")
@@ -501,7 +533,7 @@ python3 scripts/main2.py simulate \
     --alphabet aa \
     --align results/preprocessed/clean_data \
     --tree data/prot_mammals/trees \
-    --config backup/config/bpp/aa/WAG_frequencies.bpp \
+    --config config/bpp/aa/WAG_frequencies.bpp \
     --sim-output results/simulations \
     --ext_rate 0.3 \
     --tree-output results/trees
@@ -520,7 +552,7 @@ python3 scripts/main2.py classify \
     --real-align results/preprocessed/clean_data \
     --sim-align results/simulations \
     --output results/classification \
-    --config backup/config_template.json \
+    --config config/config_template.json \
     --tools backup/
 
 
@@ -529,7 +561,7 @@ python3 scripts/main2.py classify \
     --real-align results/preprocessed/clean_data \
     --sim-align results/simulations \
     --output results/classification \
-    --config backup/config_template.json \
+    --config config/config_template.json \
     --tools backup/ \
     --two-iterations
 
@@ -539,7 +571,7 @@ python3 scripts/main2.py classify \
     --real-align results/preprocessed/clean_data \
     --sim-align results/simulations \
     --output results/classification \
-    --config backup/config_template.json \
+    --config config/config_template.json \
     --tools backup/ \
     --two-iterations \
     --report-output results/classification/final_report.pdf

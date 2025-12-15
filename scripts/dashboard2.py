@@ -395,7 +395,7 @@ def create_run1_run2_scatter_plot(base_dir):
 
 
 def get_new_simulation_stats(base_dir):
-    """Récupère les statistiques sur les nouvelles simulations générées dans Run2"""
+    """Récupère les statistiques détaillées sur les nouvelles simulations générées dans Run2"""
     try:
         # Charger les prédictions des nouvelles simulations
         new_sim_preds_file = base_dir / "run_2" / "new_sim_predictions.parquet"
@@ -416,21 +416,46 @@ def get_new_simulation_stats(base_dir):
         
         # Identifier la colonne de probabilité
         prob_col = "prob_real" if "prob_real" in df_pd.columns else None
-        if not prob_col:
+        if not prob_col or df_pd.empty:
             return None
         
-        # Calculer les statistiques
+        scores = df_pd[prob_col].values
+        
+        # Calculer les statistiques de base
         num_selected = len(df_pd[df_pd[prob_col] >= 0.5])  # Au-dessus du seuil
         selection_rate = (num_selected / num_generated * 100) if num_generated > 0 else 0.0
-        median_score = df_pd[prob_col].median()
-        mean_score = df_pd[prob_col].mean()
+        
+        # Statistiques descriptives
+        median_score = np.median(scores)
+        mean_score = np.mean(scores)
+        std_score = np.std(scores)
+        min_score = np.min(scores)
+        max_score = np.max(scores)
+        
+        # Quartiles
+        q25 = np.percentile(scores, 25)
+        q75 = np.percentile(scores, 75)
+        
+        # Pourcentages de sélection à différents seuils
+        threshold_05 = len(df_pd[df_pd[prob_col] >= 0.5])
+        threshold_07 = len(df_pd[df_pd[prob_col] >= 0.7])
+        threshold_09 = len(df_pd[df_pd[prob_col] >= 0.9])
         
         return {
             "num_new_sims": num_generated,
             "num_selected": num_selected,
             "selection_rate": selection_rate,
             "median_score": median_score,
-            "mean_score": mean_score
+            "mean_score": mean_score,
+            "std_score": std_score,
+            "min_score": min_score,
+            "max_score": max_score,
+            "q25": q25,
+            "q75": q75,
+            "threshold_05": threshold_05,
+            "threshold_07": threshold_07,
+            "threshold_09": threshold_09,
+            "scores": scores  # Pour les visualisations
         }
     
     except Exception as e:
@@ -1131,45 +1156,146 @@ def make_app():
                 # ==========================================
                 new_sim_stats = get_new_simulation_stats(classif_dir)
                 if new_sim_stats:
+                    # Créer un histogramme des scores des nouvelles simulations
+                    hist_fig = None
+                    if "scores" in new_sim_stats and len(new_sim_stats["scores"]) > 0:
+                        hist_fig = px.histogram(
+                            x=new_sim_stats["scores"],
+                            nbins=50,
+                            title="Distribution des scores des nouvelles simulations",
+                            labels={"x": "Probabilité d'être réel", "y": "Nombre de simulations"},
+                            marginal="box"
+                        )
+                        hist_fig.update_layout(
+                            template="plotly_white",
+                            height=400,
+                            showlegend=False
+                        )
+                        # Ajouter des lignes verticales pour les seuils
+                        hist_fig.add_vline(x=0.5, line_dash="dash", line_color="orange", 
+                                          annotation_text="Seuil 0.5", annotation_position="top")
+                        hist_fig.add_vline(x=0.7, line_dash="dash", line_color="red",
+                                          annotation_text="Seuil 0.7", annotation_position="top")
+                        hist_fig.add_vline(x=new_sim_stats["median_score"], line_dash="dot", 
+                                          line_color="blue", annotation_text="Médiane", annotation_position="top")
+                    
                     children.extend([
-                        html.H4("Statistiques sur les nouvelles simulations (Run2)", className="mb-3"),
+                        html.H4("Statistiques détaillées sur les nouvelles simulations (Run2)", className="mb-3"),
+                        html.P(
+                            "Ces statistiques concernent les nouvelles simulations générées entre Run1 et Run2 "
+                            "pour équilibrer le nombre de données simulées dans le dataset d'entraînement de Run2.",
+                            className="text-muted mb-3"
+                        ),
+                        # Première ligne: Métriques principales
                         dbc.Row([
                             dbc.Col([
                                 dbc.Card([
-                                    dbc.CardHeader("Nombre de nouvelles simulations"),
+                                    dbc.CardHeader("Nombre généré"),
                                     dbc.CardBody([
                                         html.H3(f"{new_sim_stats['num_new_sims']}", className="text-center"),
-                                        html.P("Simulations générées", className="text-muted text-center mb-0")
+                                        html.P("Nouvelles simulations", className="text-muted text-center mb-0")
                                     ])
                                 ])
-                            ], width=3),
+                            ], width=2),
                             dbc.Col([
                                 dbc.Card([
-                                    dbc.CardHeader("Simulations sélectionnées"),
+                                    dbc.CardHeader("Sélectionnées (≥0.5)"),
                                     dbc.CardBody([
                                         html.H3(f"{new_sim_stats['num_selected']}", className="text-center"),
                                         html.P(f"({new_sim_stats['selection_rate']:.1f}%)", className="text-muted text-center mb-0")
                                     ])
                                 ])
-                            ], width=3),
+                            ], width=2),
                             dbc.Col([
                                 dbc.Card([
                                     dbc.CardHeader("Score médian"),
                                     dbc.CardBody([
                                         html.H3(f"{new_sim_stats['median_score']:.3f}", className="text-center"),
-                                        html.P("Probabilité d'être réel", className="text-muted text-center mb-0")
+                                        html.P("Probabilité médiane", className="text-muted text-center mb-0")
                                     ])
                                 ])
-                            ], width=3),
+                            ], width=2),
                             dbc.Col([
                                 dbc.Card([
                                     dbc.CardHeader("Score moyen"),
                                     dbc.CardBody([
                                         html.H3(f"{new_sim_stats['mean_score']:.3f}", className="text-center"),
-                                        html.P("Probabilité d'être réel", className="text-muted text-center mb-0")
+                                        html.P("Probabilité moyenne", className="text-muted text-center mb-0")
+                                    ])
+                                ])
+                            ], width=2),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Écart-type"),
+                                    dbc.CardBody([
+                                        html.H3(f"{new_sim_stats['std_score']:.3f}", className="text-center"),
+                                        html.P("Dispersion", className="text-muted text-center mb-0")
+                                    ])
+                                ])
+                            ], width=2),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Plage"),
+                                    dbc.CardBody([
+                                        html.H5(f"{new_sim_stats['min_score']:.3f} - {new_sim_stats['max_score']:.3f}", 
+                                               className="text-center mb-0"),
+                                        html.P("Min - Max", className="text-muted text-center mb-0")
+                                    ])
+                                ])
+                            ], width=2),
+                        ], className="mb-3"),
+                        # Deuxième ligne: Quartiles et seuils
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Quartiles"),
+                                    dbc.CardBody([
+                                        html.P([html.Strong("Q25: "), f"{new_sim_stats['q25']:.3f}"], className="mb-1"),
+                                        html.P([html.Strong("Q75: "), f"{new_sim_stats['q75']:.3f}"], className="mb-0"),
                                     ])
                                 ])
                             ], width=3),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Sélection par seuil"),
+                                    dbc.CardBody([
+                                        html.P([html.Strong("≥ 0.5: "), f"{new_sim_stats['threshold_05']} simulations"], className="mb-1"),
+                                        html.P([html.Strong("≥ 0.7: "), f"{new_sim_stats['threshold_07']} simulations"], className="mb-1"),
+                                        html.P([html.Strong("≥ 0.9: "), f"{new_sim_stats['threshold_09']} simulations"], className="mb-0"),
+                                    ])
+                                ])
+                            ], width=3),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Taux de sélection"),
+                                    dbc.CardBody([
+                                        html.P([html.Strong("Seuil 0.5: "), 
+                                               f"{(new_sim_stats['threshold_05']/new_sim_stats['num_new_sims']*100):.1f}%"], 
+                                              className="mb-1"),
+                                        html.P([html.Strong("Seuil 0.7: "), 
+                                               f"{(new_sim_stats['threshold_07']/new_sim_stats['num_new_sims']*100):.1f}%"], 
+                                              className="mb-1"),
+                                        html.P([html.Strong("Seuil 0.9: "), 
+                                               f"{(new_sim_stats['threshold_09']/new_sim_stats['num_new_sims']*100):.1f}%"], 
+                                              className="mb-0"),
+                                    ])
+                                ])
+                            ], width=3),
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("IQR"),
+                                    dbc.CardBody([
+                                        html.H5(f"{new_sim_stats['q75'] - new_sim_stats['q25']:.3f}", 
+                                               className="text-center mb-0"),
+                                        html.P("Interquartile Range", className="text-muted text-center mb-0")
+                                    ])
+                                ])
+                            ], width=3),
+                        ], className="mb-4"),
+                        # Histogramme de distribution
+                        html.Div([
+                            dcc.Graph(figure=hist_fig, id="new-sim-histogram") if hist_fig else 
+                            html.Div("Données insuffisantes pour générer l'histogramme", className="alert alert-info")
                         ], className="mb-4"),
                         html.Hr(className="my-4"),
                     ])

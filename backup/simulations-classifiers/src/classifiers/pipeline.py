@@ -97,6 +97,9 @@ class Pipeline:
 
         # Classifier registry
         self.classifiers: list[dict] = []
+        
+        # Configuration for generating new simulations between run1 and run2
+        self.sim_config_2: dict | None = None
 
         self.logger.info(f"Pipeline initialized at {self.init_time}")
         self.logger.info(f"Device   : {self.device}")
@@ -161,6 +164,11 @@ class Pipeline:
             args = c.get("args", {})
             out_dir = c.get("out_dir", c["classifier"])
             pipeline.add_classifier(c["classifier"], out_dir=out_dir, **args)
+        
+        # Load sim_config_2 if provided (for generating new simulations between run1 and run2)
+        if "sim_config_2" in cfg:
+            pipeline.sim_config_2 = cfg["sim_config_2"]
+            pipeline.logger.info("Loaded sim_config_2 for generating new simulations between run1 and run2")
 
         return pipeline
 
@@ -1023,16 +1031,324 @@ class Pipeline:
 
 
     # =================================================================
+    #          GENERATE AND FILTER NEW SIMULATIONS FOR RUN2
+    # =================================================================
+    def generate_and_filter_new_simulations(
+        self, 
+        best_model_info: dict, 
+        initial_sim_count: int, 
+        selected_count: int,
+        threshold: float
+    ) -> tuple[list[str], pl.DataFrame]:
+        """
+        Generate new simulations to balance the dataset size for Run2, then filter them
+        using the best model from Run1.
+        
+        Parameters
+        ----------
+        best_model_info : dict
+            Dictionary containing best model information from _select_best_overall_model()
+        initial_sim_count : int
+            Initial number of simulated alignments
+        selected_count : int
+            Number of simulations selected from Run1
+        threshold : float
+            Threshold for filtering new simulations
+        
+        Returns
+        -------
+        tuple[list[str], pl.DataFrame]
+            Selected filenames and full predictions DataFrame for new simulations
+        """
+        if self.sim_config_2 is None:
+            self.logger.info("[NEW SIMS] No sim_config_2 provided, skipping generation of new simulations")
+            return [], pl.DataFrame()
+        
+        # Calculate how many new simulations we need
+        # Goal: have the same number of simulated data as real data
+        num_real = len(self.base_data.source_real.files)
+        num_needed = max(0, num_real - selected_count)
+        
+        if num_needed == 0:
+            self.logger.info(
+                f"[NEW SIMS] No new simulations needed. "
+                f"Real: {num_real}, Selected from Run1: {selected_count} (already balanced)"
+            )
+            return [], pl.DataFrame()
+        
+        self.logger.info(
+            f"[NEW SIMS] Generating {num_needed} new simulations to balance dataset "
+            f"(Real: {num_real}, Selected from Run1: {selected_count}, Needed: {num_needed})"
+        )
+        
+        # Setup directories
+        new_sim_dir = self.out_path / "run_2" / "new_sim"
+        new_sim_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Import BppSimulator (need to handle import path)
+        # The pipeline is in backup/simulations-classifiers/src/classifiers/
+        # We need to go up to project root and then to scripts/
+        try:
+            import sys
+            # Calculate path: from backup/simulations-classifiers/src/classifiers/ to project root
+            # __file__ is at: .../backup/simulations-classifiers/src/classifiers/pipeline.py
+            # We need: .../scripts/simulation.py
+            pipeline_file = Path(__file__).resolve()
+            # Go up: classifiers -> src -> simulations-classifiers -> backup -> project_root
+            project_root = pipeline_file.parents[4]  # backup/simulations-classifiers/src/classifiers -> project_root
+            scripts_path = project_root / "scripts"
+            
+            if not scripts_path.exists():
+                # Alternative: try going up one more level if structure is different
+                project_root = pipeline_file.parents[5]
+                scripts_path = project_root / "scripts"
+            
+            if scripts_path.exists():
+                if str(scripts_path) not in sys.path:
+                    sys.path.insert(0, str(scripts_path))
+                from simulation import BppSimulator
+            else:
+                raise ImportError(f"Scripts directory not found at {scripts_path}")
+        except ImportError as e:
+            self.logger.error(f"[NEW SIMS] Could not import BppSimulator: {e}")
+            self.logger.error(f"[NEW SIMS] Tried path: {scripts_path}")
+            return [], pl.DataFrame()
+        
+        # Extract simulation config
+        sim_config = self.sim_config_2
+        config_file = Path(sim_config.get("config"))
+        tree_dir = Path(sim_config.get("tree"))
+        alphabet = sim_config.get("alphabet", "aa")
+        ext_rate = sim_config.get("ext_rate")
+        
+        # Determine source alignments directory (use run_2_real as source for new simulations)
+        source_align_dir = self.out_path / "run_2_real"
+        if not source_align_dir.exists():
+            self.logger.warning(f"[NEW SIMS] Source alignment directory not found: {source_align_dir}")
+            return [], pl.DataFrame()
+        
+        # Setup for generation and filtering
+        clf_name = best_model_info["clf_name"]
+        clf = best_model_info["clf"]
+        run1_dir = self.out_path / "run_1"
+        clf_run1_dir = run1_dir / clf["out_dir"]
+        
+        from classifiers.data.sources import FastaSource
+        from classifiers.data.data import Data
+        
+        # Generate a large batch of simulations (we'll filter and take exactly what we need)
+        # Generate 4-5x the needed amount to account for filtering
+        num_to_generate = max(num_needed * 4, 500)  # At least 500 simulations
+        
+        self.logger.info(
+            f"[NEW SIMS] Generating {num_to_generate} simulations (will filter to get exactly {num_needed})"
+        )
+        
+        # Create BppSimulator instance
+        bpp_sim = BppSimulator(
+            align=str(source_align_dir),
+            tree=str(tree_dir),
+            config=str(config_file),
+            output=str(new_sim_dir),
+            ext_rate=ext_rate
+        )
+        
+        # Generate simulations
+        try:
+            bpp_sim.simulate()
+        except Exception as e:
+            self.logger.error(f"[NEW SIMS] Error during simulation: {e}")
+            import traceback
+            self.logger.error(traceback.format_exc())
+            return [], pl.DataFrame()
+        
+        # Count generated files
+        generated_files = list(new_sim_dir.glob("*.fasta"))
+        num_generated = len(generated_files)
+        self.logger.info(f"[NEW SIMS] Generated {num_generated} simulation files")
+        
+        if num_generated == 0:
+            self.logger.warning("[NEW SIMS] No simulations were generated")
+            return [], pl.DataFrame()
+        
+        # Now filter using the best model from Run1
+        self.logger.info("[NEW SIMS] Filtering new simulations using best model from Run1...")
+        
+        # Create a temporary Data object with new simulations
+        temp_real_dir = self.out_path / "run_2_real"
+        temp_sim_dir = new_sim_dir
+        
+        temp_data = Data(
+            source_real=FastaSource(temp_real_dir),
+            source_simulated=FastaSource(temp_sim_dir),
+            tokenizer=self.tokenizer,
+        )
+        
+        # Save original base_data and temporarily replace it
+        original_base_data = self.base_data
+        self.base_data = temp_data
+        
+        # Make predictions using the best model from Run1
+        original_iteration = getattr(self, "_current_iteration", None)
+        self._current_iteration = 1
+        preds = self.predict_on_sim(clf, clf_run1_dir)
+        if original_iteration is not None:
+            self._current_iteration = original_iteration
+        
+        # Restore original base_data
+        self.base_data = original_base_data
+        
+        if preds is None or preds.is_empty():
+            self.logger.warning("[NEW SIMS] No predictions generated for new simulations")
+            return [], pl.DataFrame()
+        
+        if "prob_real" not in preds.columns:
+            self.logger.warning("[NEW SIMS] prob_real column not found in predictions")
+            return [], pl.DataFrame()
+        
+        # Calculate optimal threshold using Youden's J statistic (like in Run1)
+        # This is the same method used for filtering in Run1
+        if hasattr(temp_data, 'labels') and temp_data.labels:
+            optimal_threshold = self._find_optimal_threshold_roc(preds, temp_data.labels)
+            self.logger.info(
+                f"[NEW SIMS] Optimal threshold (Youden's J) = {optimal_threshold:.4f} "
+                f"(same method as Run1 filtering)"
+            )
+        else:
+            # Fallback to provided threshold if no labels available
+            optimal_threshold = threshold
+            self.logger.info(
+                f"[NEW SIMS] Using provided threshold = {optimal_threshold:.4f} "
+                f"(labels not available for Youden calculation)"
+            )
+        
+        # Filter predictions using optimal threshold (same as Run1)
+        filtered = preds.filter(pl.col("prob_real") >= optimal_threshold)
+        selected_filenames = filtered["filename"].to_list()
+        
+        self.logger.info(
+            f"[NEW SIMS] Filtered {len(selected_filenames)}/{num_generated} new simulations "
+            f"(threshold={optimal_threshold:.4f})"
+        )
+        
+        # If we don't have enough, we need to generate more
+        if len(selected_filenames) < num_needed:
+            self.logger.warning(
+                f"[NEW SIMS] Only {len(selected_filenames)}/{num_needed} simulations passed filtering. "
+                f"Generating additional simulations..."
+            )
+            
+            # Generate additional simulations in batches until we have enough
+            batch_num = 0
+            max_additional_batches = 5
+            
+            while len(selected_filenames) < num_needed and batch_num < max_additional_batches:
+                batch_num += 1
+                # Create a temporary batch directory
+                batch_dir = new_sim_dir / f"batch_{batch_num}"
+                batch_dir.mkdir(exist_ok=True)
+                
+                self.logger.info(f"[NEW SIMS] Additional batch {batch_num}: Generating more simulations...")
+                
+                batch_sim = BppSimulator(
+                    align=str(source_align_dir),
+                    tree=str(tree_dir),
+                    config=str(config_file),
+                    output=str(batch_dir),
+                    ext_rate=ext_rate
+                )
+                
+                try:
+                    batch_sim.simulate()
+                except Exception as e:
+                    self.logger.error(f"[NEW SIMS] Error in additional batch {batch_num}: {e}")
+                    break
+                
+                # Move batch files to main directory with unique names
+                batch_files = list(batch_dir.glob("*.fasta"))
+                for bf in batch_files:
+                    # Add batch number to filename to avoid conflicts
+                    new_name = f"batch{batch_num}_{bf.name}"
+                    bf.rename(new_sim_dir / new_name)
+                
+                # Re-predict on all files including new batch
+                temp_data_batch = Data(
+                    source_real=FastaSource(temp_real_dir),
+                    source_simulated=FastaSource(new_sim_dir),
+                    tokenizer=self.tokenizer,
+                )
+                
+                # Use original_base_data (saved at the beginning) for restoration
+                self.base_data = temp_data_batch
+                
+                original_iteration = getattr(self, "_current_iteration", None)
+                self._current_iteration = 1
+                batch_preds = self.predict_on_sim(clf, clf_run1_dir)
+                if original_iteration is not None:
+                    self._current_iteration = original_iteration
+                
+                # Restore to original_base_data (not temp_data)
+                self.base_data = original_base_data
+                
+                if batch_preds is not None and not batch_preds.is_empty() and "prob_real" in batch_preds.columns:
+                    # Recalculate threshold with all data
+                    if hasattr(temp_data_batch, 'labels') and temp_data_batch.labels:
+                        optimal_threshold = self._find_optimal_threshold_roc(batch_preds, temp_data_batch.labels)
+                    
+                    filtered_batch = batch_preds.filter(pl.col("prob_real") >= optimal_threshold)
+                    batch_selected = [f for f in filtered_batch["filename"].to_list() if f not in selected_filenames]
+                    selected_filenames.extend(batch_selected)
+                    
+                    self.logger.info(
+                        f"[NEW SIMS] Batch {batch_num}: Added {len(batch_selected)} more filtered simulations. "
+                        f"Total: {len(selected_filenames)}/{num_needed}"
+                    )
+                    
+                    preds = batch_preds  # Update predictions
+                
+                # Clean up batch directory
+                import shutil
+                if batch_dir.exists():
+                    shutil.rmtree(batch_dir)
+        
+        # Take exactly the number needed
+        if len(selected_filenames) > num_needed:
+            import random
+            selected_filenames = random.sample(selected_filenames, num_needed)
+            self.logger.info(
+                f"[NEW SIMS] Randomly sampled {num_needed} from {len(selected_filenames)} filtered simulations"
+            )
+        elif len(selected_filenames) < num_needed:
+            self.logger.warning(
+                f"[NEW SIMS] Only {len(selected_filenames)}/{num_needed} simulations passed filtering. "
+                f"Dataset will be unbalanced."
+            )
+        
+        # Save predictions for dashboard
+        preds.write_parquet(self.out_path / "run_2" / "new_sim_predictions.parquet")
+        
+        return selected_filenames, preds
+
+    # =================================================================
     #                BUILD DATASET FOR RUN2
     # =================================================================
-    def build_run2_dataset(self, selected: list[str]) -> None:
+    def build_run2_dataset(self, selected: list[str], new_sim_selected: list[str] = None) -> None:
         """
         Build the dataset for Run2:
             - copy all real alignments
-            - copy only selected simulated alignments
+            - copy only selected simulated alignments from Run1
+            - add newly generated and filtered simulations (if any)
+        
+        Parameters
+        ----------
+        selected : list[str]
+            Filenames of simulations selected from Run1
+        new_sim_selected : list[str], optional
+            Filenames of newly generated simulations that passed filtering
         """
         r2_real = self.out_path / "run_2_real"
         r2_sim = self.out_path / "run_2_sim"
+        new_sim_dir = self.out_path / "run_2" / "new_sim"
 
         r2_real.mkdir(exist_ok=True)
         r2_sim.mkdir(exist_ok=True)
@@ -1041,8 +1357,8 @@ class Pipeline:
         for f in tqdm(self.base_data.source_real.files, desc="[RUN 2] Copy REAL", unit="file"):
             shutil.copy(f, r2_real / f.name)
 
-        # Copy selected sim
-        for fname in tqdm(selected, desc="[RUN 2] Copy SIM", unit="file"):
+        # Copy selected sim from Run1
+        for fname in tqdm(selected, desc="[RUN 2] Copy SIM (from Run1)", unit="file"):
             # Remove "_sim" suffix if present (added during preprocessing for duplicate keys)
             # to get the original filename in the source directory
             # The suffix "_sim" is added to the stem (before extension), not the full filename
@@ -1073,6 +1389,105 @@ class Pipeline:
                 shutil.copy(src, r2_sim / original_fname)
             else:
                 self.logger.warning(f"[RUN 2] File not found: {fname} (tried {original_fname} and {fname})")
+        
+        # Copy newly generated and filtered simulations
+        # Track files already copied to avoid duplicates
+        copied_files = set()
+        for fname in selected:
+            # Get the actual filename that was copied (without _sim suffix)
+            if fname.endswith(".fasta"):
+                stem = fname[:-6]
+                ext = ".fasta"
+            elif fname.endswith(".fa"):
+                stem = fname[:-3]
+                ext = ".fa"
+            else:
+                stem = fname
+                ext = ""
+            
+            if stem.endswith("_sim"):
+                copied_files.add(stem[:-4] + ext)
+            else:
+                copied_files.add(fname)
+        
+        if new_sim_selected:
+            self.logger.info(f"[RUN 2] Adding {len(new_sim_selected)} newly generated simulations")
+            copied_count = 0
+            skipped_duplicates = 0
+            
+            for fname in tqdm(new_sim_selected, desc="[RUN 2] Copy NEW SIM", unit="file"):
+                # Remove "_sim" suffix if present (added during preprocessing for duplicate keys)
+                if fname.endswith(".fasta"):
+                    stem = fname[:-6]  # Remove .fasta
+                    ext = ".fasta"
+                elif fname.endswith(".fa"):
+                    stem = fname[:-3]  # Remove .fa
+                    ext = ".fa"
+                else:
+                    stem = fname
+                    ext = ""
+                
+                # Remove _sim suffix from stem if present
+                if stem.endswith("_sim"):
+                    original_fname = stem[:-4] + ext
+                else:
+                    original_fname = fname
+                
+                # Check if this file already exists (from Run1)
+                if original_fname in copied_files:
+                    # Add a unique prefix to avoid overwriting
+                    dest_name = f"new_{original_fname}"
+                    skipped_duplicates += 1
+                else:
+                    dest_name = original_fname
+                
+                # Try to find the file with original name (without _sim)
+                src = new_sim_dir / original_fname
+                if not src.exists():
+                    # Fallback: try with the fname as-is (in case it wasn't renamed)
+                    src = new_sim_dir / fname
+                
+                if src.exists():
+                    # Copy with appropriate name (with prefix if duplicate)
+                    shutil.copy(src, r2_sim / dest_name)
+                    copied_files.add(dest_name)
+                    copied_count += 1
+                else:
+                    self.logger.warning(f"[RUN 2] New sim file not found: {fname} (tried {original_fname} and {fname})")
+            
+            if skipped_duplicates > 0:
+                self.logger.info(
+                    f"[RUN 2] {skipped_duplicates} new simulations had duplicate names with Run1 files, "
+                    f"prefixed with 'new_' to avoid overwriting"
+                )
+        
+        # Log final counts (count actual files, not what we tried to copy)
+        num_real_final = len(list(r2_real.glob("*.fasta"))) if r2_real.exists() else 0
+        num_sim_final = len(list(r2_sim.glob("*.fasta"))) if r2_sim.exists() else 0
+        
+        # Count unique files actually copied
+        actual_run1_count = len([f for f in r2_sim.glob("*.fasta") if not f.name.startswith("new_") and not f.name.startswith("batch")])
+        actual_new_count = len([f for f in r2_sim.glob("*.fasta") if f.name.startswith("new_") or f.name.startswith("batch")])
+        
+        self.logger.info(
+            f"[RUN 2] Dataset built: {num_real_final} real, {num_sim_final} simulated "
+            f"({actual_run1_count} from Run1, {actual_new_count} newly generated)"
+        )
+        
+        # Warn if counts don't match expected
+        expected_sim = len(selected) + (len(new_sim_selected) if new_sim_selected else 0)
+        if num_sim_final != expected_sim:
+            self.logger.warning(
+                f"[RUN 2] Mismatch: expected {expected_sim} simulations but found {num_sim_final} files. "
+                f"Some files may have been overwritten or not copied."
+            )
+        
+        # Warn if not balanced with real data
+        if num_sim_final != num_real_final:
+            self.logger.warning(
+                f"[RUN 2] Dataset unbalanced: {num_real_final} real vs {num_sim_final} simulated "
+                f"(difference: {num_real_final - num_sim_final})"
+            )
 
     # =================================================================
     #                  RUN 2 RETRAIN BEST MODEL
@@ -1380,9 +1795,24 @@ class Pipeline:
             self.logger.error("Failed to select best model from Run 1. Cannot proceed with Run 2.")
             return
 
+        # ---------------- Generate new simulations (if needed) ----------------
+        new_sim_selected = []
+        new_sim_preds = pl.DataFrame()
+        
+        if self.sim_config_2 is not None:
+            self.logger.info("=== GENERATING NEW SIMULATIONS FOR RUN2 ===")
+            new_sim_selected, new_sim_preds = self.generate_and_filter_new_simulations(
+                best_model_info=best_model_info,
+                initial_sim_count=initial_sim_count,
+                selected_count=len(selected_1),
+                threshold=threshold
+            )
+            if new_sim_selected:
+                self.logger.info(f"[NEW SIMS] {len(new_sim_selected)} new simulations will be added to Run2 dataset")
+        
         # ---------------- Build RUN2 dataset ----------------
         self.logger.info("=== BUILDING RUN 2 DATASET ===")
-        self.build_run2_dataset(selected_1)
+        self.build_run2_dataset(selected_1, new_sim_selected=new_sim_selected)
 
         # ---------------- Reload dataset ----------------
         self.base_data = Data(

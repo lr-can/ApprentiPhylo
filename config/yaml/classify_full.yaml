@@ -11,3 +11,9 @@ classify:
   two-iterations: true
   threshold: 0.5
   report-output: results/classification/final_report.pdf
+  # Configuration pour générer de nouvelles simulations entre Run1 et Run2
+  sim_config_2:
+    config: config/bpp/aa/WAG_frequencies.bpp
+    tree: data/prot_mammals/trees
+    alphabet: aa
+    ext_rate: 0.3

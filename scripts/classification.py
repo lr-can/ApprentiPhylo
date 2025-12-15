@@ -10,7 +10,7 @@ from pathlib import Path
 import subprocess
 
 
-def run_classification(realali, simali, output, config, tools, two_iterations=False, threshold=0.5):
+def run_classification(realali, simali, output, config, tools, two_iterations=False, threshold=0.5, sim_config_2=None):
     """
     Prépare le fichier de configuration JSON et lance le pipeline.
 
@@ -22,6 +22,7 @@ def run_classification(realali, simali, output, config, tools, two_iterations=Fa
         tools (str): Dossier des outils nécessaires.
         two_iterations (bool): Si True, active Run1 + Run2 automatiquement.
         threshold (float): Seuil de décision pour flagger les simulations "réelles".
+        sim_config_2 (dict, optional): Configuration pour générer de nouvelles simulations entre run1 et run2.
     """
     output = Path(output)
     real_ali = Path(realali)
@@ -42,6 +43,15 @@ def run_classification(realali, simali, output, config, tools, two_iterations=Fa
     data["out_path"] = str(output)
     data["real_path"] = str(real_ali)
     data["sim_path"] = str(sim_ali)
+    
+    # Ajouter sim_config_2 si fourni (pour génération de nouvelles simulations entre run1 et run2)
+    if sim_config_2 is not None:
+        data["sim_config_2"] = sim_config_2
+        # Sauvegarder aussi dans run_1/store_1 pour référence future
+        store_dir = output / "run_1" / "store_1"
+        store_dir.mkdir(parents=True, exist_ok=True)
+        with open(store_dir / "sim_config.json", "w") as f:
+            json.dump(sim_config_2, f, indent=4)
 
     # Sauvegarder le config.json final
     final_config = output / "config.json"
