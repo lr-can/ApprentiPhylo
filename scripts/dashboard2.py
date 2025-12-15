@@ -33,6 +33,8 @@ try:
 except Exception:
     HAS_PHYLO = False
 
+# Using only matplotlib with Bio.Phylo for tree visualization
+
 REFRESH_INTERVAL_MS = 60000  # auto-refresh every 1 minute
 
 
@@ -949,27 +951,28 @@ def make_app():
                     if df.empty:
                         return html.Div("Metrics file exists but could not be read or is empty.")
 
-                    # Histogramme MPD
-                    fig_hist = px.histogram(
-                        df, x="MPD", nbins=40, title="MPD – Histogramme",
-                        marginal="box"
-                    )
-
-                    # Courbe de distribution (KDE)
-                    fig_kde = px.density_contour(
-                        df, x="MPD", marginal_y="violin", title="MPD – Distribution KDE"
-                    )
-
-
-                    # Scatter MPD vs n_leaves
-                    fig_scatter = px.scatter(
-                        df, x="n_leaves", y="MPD", title="MPD vs n_leaves"
-                    )
-
                     return html.Div([
-                        dcc.Graph(figure=fig_hist),
-                        dcc.Graph(figure=fig_kde),
-                        dcc.Graph(figure=fig_scatter)
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardBody([
+                                        html.H5("Options d'affichage", className="mb-3"),
+                                        dbc.Switch(
+                                            id="outlier-toggle",
+                                            label="Masquer les outliers (IQR method)",
+                                            value=False,
+                                            className="mb-2"
+                                        ),
+                                        html.Small(
+                                            "Les outliers sont détectés avec la méthode IQR (Interquartile Range). "
+                                            "Les valeurs en dehors de Q1-1.5*IQR et Q3+1.5*IQR sont considérées comme outliers.",
+                                            className="text-muted"
+                                        )
+                                    ])
+                                ], className="mb-3")
+                            ], width=12)
+                        ]),
+                        html.Div(id="sim-plots-container")
                     ])
                 else:
                     return html.Div("No metrics file found at results/metrics_results/mpd_results.csv")
@@ -1439,26 +1442,40 @@ def make_app():
                     ], className="mb-3")
                 ]
                 
-                # Visualisation de l'arbre avec Bio.Phylo
+                # Visualisation de l'arbre avec Bio.Phylo et matplotlib
                 if HAS_PHYLO:
                     try:
                         tree = Phylo.read(str(p), "newick")
-                        # Compter les feuilles
                         n_leaves = len(tree.get_terminals())
                         
-                        # Ajuster la taille de la figure en fonction du nombre de feuilles
-                        # Plus il y a de feuilles, plus la figure doit être haute
-                        base_height = 8
-                        height_per_leaf = 0.3  # 0.3 inch par feuille
+                        # Style amélioré avec matplotlib
+                        try:
+                            plt.style.use('seaborn-v0_8-whitegrid')
+                        except:
+                            try:
+                                plt.style.use('seaborn-whitegrid')
+                            except:
+                                plt.style.use('default')
+                        base_height = 10
+                        height_per_leaf = 0.4
                         fig_height = max(base_height, n_leaves * height_per_leaf)
-                        fig_width = min(14, 10 + (n_leaves / 20))  # Largeur adaptative aussi
+                        fig_width = min(16, 12 + (n_leaves / 15))
                         
-                        # Dessiner l'arbre
                         figfile = io.BytesIO()
-                        plt.figure(figsize=(fig_width, fig_height))
-                        Phylo.draw(tree, do_show=False)
+                        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+                        fig.patch.set_facecolor('white')
+                        ax.set_facecolor('white')
+                        
+                        Phylo.draw(tree, axes=ax, do_show=False)
+                        ax.spines['top'].set_visible(False)
+                        ax.spines['right'].set_visible(False)
+                        ax.spines['bottom'].set_color('#2d3436')
+                        ax.spines['left'].set_color('#2d3436')
+                        ax.tick_params(colors='#2d3436')
+                        ax.grid(True, alpha=0.3, linestyle='--')
+                        
                         plt.tight_layout()
-                        plt.savefig(figfile, format="png", bbox_inches="tight", dpi=150)
+                        plt.savefig(figfile, format="png", bbox_inches="tight", dpi=200, facecolor='white', edgecolor='none')
                         plt.close()
                         figfile.seek(0)
                         encoded = base64.b64encode(figfile.read()).decode("ascii")
@@ -1474,10 +1491,17 @@ def make_app():
                                 dbc.CardBody([
                                     dbc.Alert([
                                         html.Strong(f"Nombre de feuilles: {n_leaves}"),
+                                        html.Br(),
+                                        html.Small("Visualisation avec Bio.Phylo et matplotlib", className="text-muted")
                                     ], color="info", className="mb-3"),
                                     html.Img(
                                         src="data:image/png;base64," + encoded,
-                                        style={"maxWidth": "100%", "border": "1px solid #dee2e6", "borderRadius": "5px"}
+                                        style={
+                                            "maxWidth": "100%", 
+                                            "border": "2px solid #dee2e6", 
+                                            "borderRadius": "8px",
+                                            "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"
+                                        }
                                     )
                                 ])
                             ])
@@ -1494,7 +1518,7 @@ def make_app():
                         dbc.Alert([
                             html.Strong("Visualisation non disponible"),
                             html.Br(),
-                            "Installez biopython et matplotlib pour activer la visualisation des arbres."
+                            "Installez biopython et matplotlib pour activer la visualisation des arbres. "
                         ], color="info")
                     )
                 
@@ -1600,6 +1624,73 @@ def make_app():
         except Exception as e:
             return html.Div("Error rendering tab: " + str(e) + "\n" + traceback.format_exc())
 
+    # Callback pour gérer l'affichage des plots avec/sans outliers
+    @app.callback(
+        Output("sim-plots-container", "children"),
+        Input("outlier-toggle", "value"),
+        Input("interval-refresh", "n_intervals"),
+    )
+    def update_sim_plots(remove_outliers, _):
+        """Met à jour les plots de simulation avec ou sans outliers"""
+        metrics_file = results_path() / "metrics_results" / "mpd_results.csv"
+        if not metrics_file.exists():
+            return html.Div("No metrics file found at results/metrics_results/mpd_results.csv")
+        
+        df = safe_read_csv(metrics_file)
+        if df.empty:
+            return html.Div("Metrics file exists but could not be read or is empty.")
+        
+        # Filtrer les outliers si demandé (méthode IQR)
+        if remove_outliers and "MPD" in df.columns:
+            total_count = len(df)
+            Q1 = df["MPD"].quantile(0.25)
+            Q3 = df["MPD"].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            
+            df_filtered = df[(df["MPD"] >= lower_bound) & (df["MPD"] <= upper_bound)]
+            num_outliers = total_count - len(df_filtered)
+            df = df_filtered
+            
+            outlier_info = dbc.Alert([
+                html.I(className="bi bi-info-circle me-2"),
+                f"Outliers masqués: {num_outliers} points ({num_outliers/total_count*100:.1f}%) "
+                f"en dehors de [{lower_bound:.3f}, {upper_bound:.3f}]"
+            ], color="info", className="mb-3")
+        else:
+            outlier_info = html.Div()
+        
+        # Histogramme MPD
+        fig_hist = px.histogram(
+            df, x="MPD", nbins=40, title="MPD – Histogramme",
+            marginal="box",
+            template="plotly_white"
+        )
+        fig_hist.update_layout(height=500)
+
+        # Courbe de distribution (KDE)
+        fig_kde = px.density_contour(
+            df, x="MPD", marginal_y="violin", title="MPD – Distribution KDE",
+            template="plotly_white"
+        )
+        fig_kde.update_layout(height=500)
+
+        # Scatter MPD vs n_leaves
+        fig_scatter = px.scatter(
+            df, x="n_leaves", y="MPD", title="MPD vs n_leaves",
+            template="plotly_white",
+            hover_data=["MPD", "n_leaves"]
+        )
+        fig_scatter.update_layout(height=500)
+
+        return html.Div([
+            outlier_info,
+            dcc.Graph(figure=fig_hist, id="mpd-histogram"),
+            dcc.Graph(figure=fig_kde, id="mpd-kde"),
+            dcc.Graph(figure=fig_scatter, id="mpd-scatter")
+        ])
+
     # Callback pour afficher les détails du classificateur sélectionné
     @app.callback(
         Output("classifier-details", "children"),
@@ -1663,8 +1754,23 @@ def make_app():
 
 
 def run_dashboard():
-    app, server = make_app()
-    app.run(debug=True)
+    """Lance le dashboard Dash avec gestion d'erreurs robuste"""
+    try:
+        app, server = make_app()
+        print(f"\nDashboard démarré sur http://127.0.0.1:8050")
+        print("Appuyez sur Ctrl+C pour arrêter le serveur\n")
+        
+        # Lancer le serveur avec gestion d'erreurs
+        app.run(debug=True, use_reloader=False)
+    except KeyboardInterrupt:
+        print("\nArrêt du dashboard demandé par l'utilisateur (Ctrl+C)")
+        print("Dashboard fermé proprement.")
+    except Exception as e:
+        print(f"\nErreur fatale dans le dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        print("\nLe dashboard va se fermer.")
+        raise
 
 
 if __name__ == "__main__":
