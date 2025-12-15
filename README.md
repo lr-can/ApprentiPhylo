@@ -1,198 +1,387 @@
-# Assessing the Realism of Phylogenetic Simulation Methods through Machine Learning
+# PhyloClassifier - Automated pipeline for simulation and classification
+Simulation → Tree Inference → Phylogenetic Metrics → Classification → Reporting → Dashboard
 
-**Master’s Degree in Bioinformatics — Year 2**  
-**University Claude Bernard Lyon 1**
-**Project 12**
 
-**Project team:** Lorcan Brenders, Thomas Gagnieu, Maya Givre  
-**Supervisors:** Laurent Gueguen, Philippe Veber  
-**Academic Year:** 2025–2026
+# Table of Contents
+1. [Introduction](#introduction)  
+2. [Pipeline Overview](#pipeline-overview)  
+3. [Installation & Dependencies](#installation--dependencies)  
+4. [Directory Structure](#directory-structure)  
+5. [Command-Line Interface](#command-line-interface)  
+6. [Simulation Pipeline](#simulation-pipeline)  
+7. [Classification Pipeline](#classification-pipeline)  
+8. [Dashboard Visualization](#dashboard-visualisation)  
+9. [Logging System](#logging-system)  
+10. [Example Commands](#example-commands)  
+11. [Troubleshooting & FAQ](#troubleshooting--faq)
 
----
 
-## 🧬 Project Overview
+# 1. Introduction
 
-This project aims to transform the existing *PhyloClassifier* repository into an automated, flexible, and reproducible pipeline for evaluating and improving the realism of phylogenetic sequence simulations using **machine learning**.
+This repository provides a unified end-to-end phylogenetic pipeline designed to:
+- preprocess real biological alignments,
+- simulate new datasets based on those alignments and evolutionary models,
+- infer phylogenetic trees from real and simulated data,
+- compute phylogenetic metrics (such as MPD),
+- classify simulated vs. real alignments using ML tools,
+- generate PDF reports summarizing classification results,
+- visualize results through an optional dashboard.
 
-It integrates modules for:
-- Simulation of protein alignments with **Bio++**
-- Phylogenetic inference with **FastTree**
-- Machine learning classification with **PyTorch**
-- Quantitative metrics and visualisations (e.g. MPD, confusion matrices, ROC curves)
+The entire workflow is controlled through a single Python entrypoint:
+`python3 scripts/main2.py <command> [options]`
 
----
+# 2. Pipeline Overview
 
-## 🚀 Development Phases
+=> Schéma du pipeline à faire 
+    
 
-### 1. Basic Integration
-Set up a minimal version of the pipeline capable of:
-- Generating **phylogenetic trees** from real alignments using *FastTree*  
-- Simulating **protein alignments** via *Bio++ (bppseqgen)*  
-- Managing **input/output** files and configuration through `.bpp` templates  
+# 3. Installation & Dependencies
+## 3.1. System Requirements
 
-🎯 *Objective:* Obtain a first functional version that produces simulated alignments and trees — a base for all subsequent phases.
+This project requires:
+- Python 3.8+
+- Unix-based system (Linux or macOS recommended)
 
----
+## 3.2. External tools
+These external tools are **optional**.  
+They are only needed if you want to use the **simulation** part of the pipeline.  
+If used, they must be installed **before running the pipeline** and must be accessible in your `$PATH`.
 
-### 2. Classification and Metrics
-Integrate **PyTorch classifiers** and **metrics computation**:
-- Implement logistic regression, simple MLP, and CNN classifiers  
-- Compute quantitative metrics such as **Mean Pairwise Distance (MPD)** and **alignment variability**  
-- Export results as `.csv` files  
+| Tool                  | Required for                      | Description                                                    |
+| --------------------- | --------------------------------- | -------------------------------------------------------------- |
+| **FastTree**          | Maximum-likelihood tree inference | Builds ML phylogenetic trees from multiple sequence alignments |
+| **BppSeqGen (Bio++)**   | Sequence simulation               | Required if you want to run the simulation module              |
 
-🎯 *Objective:* Automatically compare real and simulated datasets and evaluate realism.
+### 3.2.1 FastTree 2.2
+FastTree provides precompiled executables for:
 
----
+- Linux 64-bit (AVX2 required)  
+- Windows command-line (AVX2 required, SSE)  
+- Multi-threaded executable (+OpenMP)  
 
-### 3. Visualisations
-Add automatic generation of graphical outputs:
-- Confusion matrices  
-- Heatmaps  
-- Distance distributions and tree plots  
+You can download it from the [official FastTree website](http://www.microbesonline.org/fasttree/).
 
-All visualisations are exported as `.svg` and/or `.pdf` files.  
+For Mac or other platforms not covered by precompiled binaries, you can compile FastTree from source [(see official instructions)](https://morgannprice.github.io/fasttree/#Install)
 
-🎯 *Objective:* Provide interpretable graphical summaries of classifier and metric results.
+### 3.2.2 BppSeqGen
+BppSeqGen is part of the [BppSuite](https://github.com/BioPP/bppsuite) (Bio++ 3.0.0)  
+It can be compiled directly from the source files.
 
----
+/!\ Before compiling BppSeqGen, you must install the Bio++ libraries (e.g. in `$bpp_dir`).  
+The required libraries are:
 
-### 4. Interactive Web Application *(optional)*
-Develop an interactive **Dash**-based web interface:
-- Explore classifier results and metrics dynamically  
-- Integrate **Plotly** figures for real-time data visualisation  
+- **bpp-core**
+- **bpp-seq**
+- **bpp-phyl**
+- **bpp-popgen**
 
-🎯 *Objective:* Offer an intuitive graphical environment for users (biologists & bioinformaticians).
+For detailed installation instructions, see the official guide:  
+https://github.com/BioPP/bpp-documentation.wiki.git
 
----
+## 3.3. Installation
+You can install the project automatically (recommended) or manually.
 
-### 5. CLI and Documentation
-Finalise a unified **Command-Line Interface (CLI)** and documentation:
-- One main entry point to run the entire workflow (`--eval`, `--simu`, etc.)  
-- User-friendly help messages and usage examples  
-- Complete technical and user documentation with tutorials and test datasets  
+### 3.3.1 Automatic installation (recommended)
 
-🎯 *Objective:* Ensure full reproducibility, accessibility, and ease of use.
-
----
-
-## 🧱 Deliverables and Milestones
-
-### ✅ 1. Clean and Structured Repository
-- Standard folder architecture:  
-  ```
-  /src
-  /config
-  /data
-  /results
-  /docs
-  /scripts
-  ```
-- Example configuration files (`.bpp`, `.yaml`)  
-- Minimal runnable pipeline script for local execution  
-
----
-
-### ✅ 2. Functional Evaluation Mode
-Command example:
-```bash
-phyloclf --eval --real <dir> --simu <dir> --out results/eval/
+Clone the repository:
 ```
-Generates:
-- Metrics (`.csv`)
-- Confusion matrices (`.svg`, `.pdf`)
-- Logs and random seeds  
+git clone <URL_of_this_repository>
+cd <repository_name>
+```
 
-🎯 Validates complete data flow from input alignments to evaluation outputs.
+Then run the installation script:
+```
+bash install.sh
+```
 
----
+This script will:
+- Create a dedicated Python virtual environment in Project_environment/
+- Activate the environment
+- Install all required Python dependencies from requirements.txt
 
-### ✅ 3. Integration of MPD and FastTree
-Implements **Mean Pairwise Distance (MPD)** computation:
-- Builds trees with *FastTree*  
-- Calculates patristic distances and inter-group MPD  
-- Aggregates statistics with bootstrap/permutation testing  
+/!\ After installation, the environment is automatically deactivated. 
+You can activate the it at any time with:
+```
+source Project_environment/bin/activate
+```
 
-Outputs:
-- `mpd.csv` summary  
-- Visualisations (histograms, violin/box plots)  
-- Logs and parameters  
+### 3.3.2 Manual installation
 
-🎯 Adds biological interpretability and quantifies evolutionary realism.
+If you prefer to install everything manually:
 
----
+- Clone the repository
+```
+git clone <URL_of_this_repository>
+cd <repository_name>
+```
 
-### ✅ 4. Simulation and Analysis Mode
-Adds simulation capabilities with *Bio++ bppseqgen*:
-- Generates new alignments from real datasets  
-- Automatically evaluates realism via classifiers  
-- Optionally filters “realistic” alignments or optimises simulations  
+- Create and activate a virtual environment
+```
+python3 -m venv .venv
+source Project_environment/bin/activate
+```
 
-🎯 Makes the pipeline autonomous for both **simulation** and **evaluation**.
+- Install Python dependencies
+```
+pip install --upgrade pip
+pip install -r requirements.txt
+```
 
----
+- (Optional) Ensure external tools are accessible:
+```
+which FastTree
+which bppseqgen
+```
 
-### ✅ 5. Assessment of Simulation Variability
-Computes diversity indicators:
-- Site entropy  
-- Mean Hamming distance  
-- Amino acid frequency variance  
+# Directory Structure
+The following directory structure illustrates the recommended organization of the project:
 
-🎯 Detects over-deterministic simulators and ensures biological variability.
+```text
+ApprentiPhylo/
+├── config/
+│   ├── bpp/
+│   ├── yaml/
+│   └── config_template.json
+│
+├── data/              # Optional directory for storing input data
+│
+├── scripts/
+│   ├── main.py
+│   ├── preprocess.py
+│   ├── simulation.py
+│   ├── compute_tree.py
+│   ├── classification.py
+│   ├── analyse_classif.py
+│   ├── analyse_predictions.py
+│   ├── analyse_predictions_plotly.py
+│   ├── phylo_metrics.py
+│   ├── filter_mono.py
+│   ├── visualize_optimal_threshold.py
+│   ├── dashboard.py
+│   ├── report.py
+│   ├── data_description.py
+│   ├── data_description2.py
+│   └── fix_logreg_history.py
+│
+├── results/
+│   ├── preprocessed/
+│   ├── simulations/
+│   ├── classification/
+│   └── trees/
+│
+└── README.md
+```
 
----
 
-### ✅ 6. Visualisation and Dimensionality Reduction
-Integrates **UMAP** and **MDS** projections to visualise:
-- Proximity between simulated and real datasets  
-- Clustering patterns reflecting simulation realism  
+# 4. Usage — Command-Line Interface
+The project provides a unified command-line interface to run the different stages of the phylogenetic pipeline:
+**simulation**, **metrics computation**, **classification**, and **visualisation**.
 
-🎯 Helps interpret and diagnose simulation quality.
+All commands are executed through the main entrypoint:
 
----
+```bash
+python3 scripts/main.py <command> [options]
+```
+The available commands are:
 
-### ✅ 7. High-Performance and Reproducible Execution
-- Local and SLURM cluster execution  
-- Parallelisation via `--threads`  
-- Containerisation (Docker / Apptainer)  
-- Full reproducibility (identical outputs, hashes, and logs)
+- `simulate` – Run the simulation pipeline
+- `metrics` – Compute phylogenetic metrics between real and simulated data
+- `classify` – Run the classification pipeline
+- `visualisation` – Launch the interactive dashboard
 
-🎯 Guarantees scalability and environment consistency.
+## 4.1 General Configuration
 
----
+For the simulate and classify commands, two configuration modes are supported:
 
-### ✅ 8. Testing, Documentation, and Reporting
-- Continuous integration (CI) with unit and end-to-end tests  
-- Comprehensive user guide and tutorial datasets  
-- Final report summarising results, best classifier, and validation outcomes  
+### 4.1.1. YAML-based configuration (recommended)
 
-🎯 Ensures robustness, transparency, and long-term usability.
+All parameters are defined in a YAML file.
+When using `--yaml`, no other command-line options are allowed.
 
----
+### 4.2.2. Command-line arguments
 
-## 🧩 Validation Summary
+All required options must be explicitly provided via flags.
 
-Validation covers:
-- **Technical:** reproducibility, stability, performance benchmarks  
-- **Scientific:** classifier accuracy, MPD similarity, biological realism  
-- **Usability:** intuitive CLI and documentation clarity  
-- **Cross-platform:** local, containerised, and SLURM runs  
+/!\ Mixing `--yaml` with other flags is not allowed and will result in an error.
 
----
 
-## 🧠 Expected Outputs
-From any valid FASTA input, the pipeline produces:
-- Simulated alignments (FASTA)
-- Phylogenetic trees (Newick)
-- MPD and variability metrics (CSV)
-- Classifier reports (CSV, confusion matrices)
-- Visualisations (SVG/PDF)
-- Execution logs and version trace
+## 4.2 Simulation Pipeline
 
----
+The simulate command runs the complete simulation workflow:
 
-## 🧾 Success Criteria
-- End-to-end execution without errors  
-- ≥0.80 F1-score for classifiers  
-- Full reproducibility (100% identical outputs)  
-- Processing time <10 minutes for 10 alignments (8 cores, 16 GB RAM)  
-- 80%+ success rate in tutorial reproduction by external testers  
+1. Preprocessing of input alignments
+
+2. Sequence simulation using Bio++ (BPP)
+
+3. Phylogenetic tree inference
+
+▪️ Command
+```
+python3 scripts/main2.py simulate [options]
+```
+
+▪️ Option 1 — Using a YAML configuration
+```
+python3 scripts/main2.py simulate --yaml config/simulate.yaml
+```
+
+The YAML file must contain a simulate section defining all required parameters.
+
+▪️ Option 2 — Using command-line arguments
+```
+python3 scripts/main2.py simulate \
+  --pre-input data/prot_mammals \
+  --pre-output results/preprocessed \
+  --minseq 5 \
+  --maxsites 2000 \
+  --minsites 100 \
+  --alphabet aa \
+  --align results/preprocessed/clean_data \
+  --tree data/prot_mammals/trees \
+  --config config/bpp/aa/WAG_frequencies.bpp \
+  --sim-output results/simulations \
+  --ext_rate 0.3 \
+  --tree-output results/trees
+```
+
+▪️ Simulation Options
+
+| Option          | Description                                  |
+| --------------- | -------------------------------------------- |
+| `--yaml`        | Path to YAML configuration file              |
+| `--pre-input`   | Input directory containing raw alignments    |
+| `--pre-output`  | Output directory for preprocessed alignments |
+| `--minseq`      | Minimum number of sequences required         |
+| `--maxsites`    | Maximum number of alignment sites            |
+| `--minsites`    | Minimum number of alignment sites            |
+| `--alphabet`    | Sequence type: `aa` or `dna`                 |
+| `--align`       | Directory containing cleaned alignments      |
+| `--tree`        | Directory containing reference trees         |
+| `--config`      | BPP configuration file                       |
+| `--sim-output`  | Output directory for simulated alignments    |
+| `--ext_rate`    | Extinction rate parameter for simulation     |
+| `--tree-output` | Output directory for inferred trees          |
+
+
+## 4.3 Metrics Computation
+
+The metrics command computes phylogenetic metrics (e.g. MPD) between empirical and simulated alignments.
+
+▪️ Command
+```
+python3 scripts/main2.py metrics [options]
+```
+
+Example
+```
+python3 scripts/main2.py metrics \
+  --empirical results/preprocessed/clean_data \
+  --simulation results/simulations \
+  --output results \
+  --threads 8
+```
+
+▪️ Metrics Options
+| Option         | Description                                |
+| -------------- | ------------------------------------------ |
+| `--empirical`  | Directory containing empirical FASTA files |
+| `--simulation` | Directory containing simulated FASTA files |
+| `--output`     | Output directory (default: `results`)      |
+| `--threads`    | Number of parallel processes (default: 4)  |
+
+The results are written to:
+
+'results/metrics_results/mpd_results.csv'
+
+## 4.4. Classification Pipeline
+
+The classify command runs the classification workflow to distinguish real vs simulated alignments.
+It supports:
+
+- One-pass classification (Run 1)
+- Two-pass refinement (Run 1 + Run 2)
+- Optional PDF report generation
+
+▪️ Command
+```
+python3 scripts/main2.py classify [options]
+```
+
+▪️ Option 1 — Using a YAML configuration
+```
+python3 scripts/main2.py classify --yaml config/classify.yaml
+```
+
+▪️ Option 2 — Using command-line arguments
+```
+Run 1 only
+python3 scripts/main2.py classify \
+  --real-align results/preprocessed/clean_data \
+  --sim-align results/simulations \
+  --output results/classification \
+  --config config/config_template.json \
+  --tools tools/
+```
+```
+Run 1 + Run 2 (refinement)
+python3 scripts/main2.py classify \
+  --real-align results/preprocessed/clean_data \
+  --sim-align results/simulations \
+  --output results/classification \
+  --config config/config_template.json \
+  --tools tools/ \
+  --two-iterations
+```
+```
+Run 1 + Run 2 + PDF report
+python3 scripts/main2.py classify \
+  --real-align results/preprocessed/clean_data \
+  --sim-align results/simulations \
+  --output results/classification \
+  --config config/config_template.json \
+  --tools tools/ \
+  --two-iterations \
+  --report-output results/classification/final_report.pdf
+```
+
+▪️ Classification Options
+| Option             | Description                                      |
+| ------------------ | ------------------------------------------------ |
+| `--yaml`           | Path to YAML configuration file                  |
+| `--real-align`     | Directory containing real (empirical) alignments |
+| `--sim-align`      | Directory containing simulated alignments        |
+| `--output`         | Output directory for classification results      |
+| `--config`         | Classification configuration file                |
+| `--tools`          | Directory containing external tools              |
+| `--two-iterations` | Enable Run 1 + Run 2 refinement                  |
+| `--threshold`      | Classification threshold (default: 0.5)          |
+| `--report-output`  | Optional output path for a PDF report            |
+
+During the classification stage:
+- Interactive Plotly visualizations are generated automatically
+- Logistic regression training history is computed if a report is requested
+
+
+## 4.5 Visualisation Dashboard
+
+The visualisation command launches an interactive Dash dashboard to explore classification results.
+
+▪️ Command
+```
+python3 scripts/main2.py visualisation
+```
+
+This starts a local web server displaying interactive plots and summaries.
+
+## 4.6 Logging
+
+All major pipeline steps (simulate, classify) are logged in:
+
+`logs/pipeline_log.csv`
+
+
+Each entry includes:
+- Step name
+- Execution status
+- Runtime duration
+- Command-line arguments used

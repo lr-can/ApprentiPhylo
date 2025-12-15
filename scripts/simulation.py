@@ -74,7 +74,7 @@ class BppSimulator:
         print(f"  > Found {n} alignments to simulate.\n")
 
         if n == 0:
-            print("⚠️ No alignments found for simulation. Exiting.")
+            print("No alignments found for simulation. Exiting.")
             return
 
         for align_path in tqdm(alignments, desc="Alignments' simulation", unit="fichier"):
@@ -82,7 +82,7 @@ class BppSimulator:
             try:
                 tree_path = Path(self.tree_dir) / f"{famname}.nwk"
                 if not tree_path.exists():
-                    tqdm.write(f"  ⚠️ Tree not found for {famname}, skipping.")
+                    tqdm.write(f"Tree not found for {famname}, skipping.")
                     continue
 
                 sequences = list(SeqIO.parse(align_path, "fasta"))
@@ -104,9 +104,9 @@ class BppSimulator:
                 result = subprocess.run(command, capture_output=True, text=True)
 
                 if result.returncode != 0:
-                    tqdm.write(f"❌ Error for {famname}: {result.stderr.strip()}")
+                    tqdm.write(f"Error for {famname}: {result.stderr.strip()}")
 
             except Exception as e:
-                tqdm.write(f"❌ Unexpected error for {famname}: {e}")
+                tqdm.write(f"Unexpected error for {famname}: {e}")
 
         print(f"\nSimulation phase completed in {time.time() - start:.1f}s.")

@@ -40,17 +40,17 @@ def generate_logreg_train_history(base_dir: str | Path, n_epochs: int = 50) -> P
     
     # Si le fichier existe déjà, retourner son chemin
     if existing_history is not None:
-        print(f"ℹ️ train_history.parquet existe déjà : {existing_history}")
+        print(f"train_history.parquet existe déjà : {existing_history}")
         return existing_history
     
     # Si aucun dossier n'existe, afficher l'avertissement
     if logreg_dir is None:
-        print(f"⚠️ Dossier results/classification/LogisticRegressionClassifier introuvable, création ignorée.")
+        print(f"Dossier results/classification/LogisticRegressionClassifier introuvable, création ignorée.")
         return base_dir / "LogisticRegressionClassifier" / "train_history.parquet"
     
     out_path = logreg_dir / "train_history.parquet"
 
-    print(f"📊 Génération du train_history.parquet pour LogisticRegressionClassifier...")
+    print(f"Génération du train_history.parquet pour LogisticRegressionClassifier...")
 
     # Simule des métriques
     epochs = np.arange(1, n_epochs + 1)
@@ -74,5 +74,5 @@ def generate_logreg_train_history(base_dir: str | Path, n_epochs: int = 50) -> P
 
     # Sauvegarde
     df.to_parquet(out_path)
-    print(f"✅ train_history.parquet créé : {out_path}")
+    print(f"train_history.parquet créé : {out_path}")
     return out_path

@@ -405,7 +405,7 @@ def process_classification_results(base_dir="results/classification", output_pdf
     if not train_df.empty:
         #  Forcer un typage homogène avant écriture Parquet
         if "best" in train_df.columns:
-        # 🔍 Convertir tout en texte, puis mapper vers bool
+        # Convertir tout en texte, puis mapper vers bool
             train_df["best"] = (
                 train_df["best"]
                 .astype(str)  # tout en texte pour éviter les erreurs

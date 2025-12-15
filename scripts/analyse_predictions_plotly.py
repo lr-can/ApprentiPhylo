@@ -31,7 +31,7 @@ def calculate_youden_threshold(y_true, y_score):
         
         if not np.any(valid_mask):
             # Aucun threshold valide, utiliser 0.5
-            print(f"⚠️  Aucun threshold valide trouvé, utilisation de 0.5 par défaut")
+            print(f"Aucun threshold valide trouvé, utilisation de 0.5 par défaut")
             return {
                 'threshold': 0.5,
                 'tpr': 0.5,
@@ -61,7 +61,7 @@ def calculate_youden_threshold(y_true, y_score):
             'auc': float(auc)
         }
     except Exception as e:
-        print(f"⚠️  Erreur dans calculate_youden_threshold: {e}")
+        print(f"Erreur dans calculate_youden_threshold: {e}")
         return {
             'threshold': 0.5,
             'tpr': 0.0,
@@ -101,8 +101,8 @@ def load_predictions_with_labels(run_number):
     if sim_dir.exists():
         sim_files = {f.name for f in sim_dir.glob("*.fasta")}
     
-    print(f"   Fichiers réels trouvés : {len(real_files)}")
-    print(f"   Fichiers simulés trouvés : {len(sim_files)}")
+    print(f"Fichiers réels trouvés : {len(real_files)}")
+    print(f"Fichiers simulés trouvés : {len(sim_files)}")
     
     def get_label(filename):
         if filename in real_files:
@@ -127,7 +127,7 @@ def load_predictions_with_labels(run_number):
     df = df.filter(pl.col("true_label") != -1)
     n_after = len(df)
     if n_before != n_after:
-        print(f"   ⚠️  {n_before - n_after} fichiers sans label ignorés")
+        print(f"   {n_before - n_after} fichiers sans label ignorés")
     
     # Calculer le seuil optimal de Youden
     y_true = df["true_label"].to_numpy()
@@ -139,7 +139,7 @@ def load_predictions_with_labels(run_number):
 
 def create_violin_and_box_plots():
     """Génère des violin plots transparents avec box plots intégrés"""
-    print("\n📊 Génération des violin plots avec box plots intégrés...\n")
+    print("\nGénération des violin plots avec box plots intégrés...\n")
     
     # Charger les données
     run1_df, youden1 = load_predictions_with_labels(1)
@@ -278,7 +278,7 @@ def create_violin_and_box_plots():
 
 def create_histograms(youden1, youden2):
     """Génère des histogrammes avec Plotly"""
-    print("\n📊 Génération des histogrammes avec Plotly...\n")
+    print("\nGénération des histogrammes avec Plotly...\n")
     
     # Charger les données
     run1_df, _ = load_predictions_with_labels(1)
@@ -425,7 +425,7 @@ def create_histograms(youden1, youden2):
 
 def create_boxplots_comparison(youden1, youden2):
     """Génère un boxplot comparatif entre RUN 1 et RUN 2"""
-    print("\n📊 Génération du boxplot comparatif avec Plotly...\n")
+    print("\nGénération du boxplot comparatif avec Plotly...\n")
     
     # Charger les données
     run1_df, _ = load_predictions_with_labels(1)
@@ -515,14 +515,14 @@ def print_statistics(youden1, youden2):
     print("STATISTIQUES DES SEUILS DE YOUDEN")
     print("="*80 + "\n")
     
-    print("📊 RUN 1")
+    print("RUN 1")
     print(f"  • Seuil optimal (Youden's J) : {youden1['threshold']:.4f}")
     print(f"  • AUC                        : {youden1['auc']:.4f}")
     print(f"  • TPR (Sensibilité)          : {youden1['tpr']:.4f}")
     print(f"  • FPR                        : {youden1['fpr']:.4f}")
     print(f"  • J statistic                : {youden1['j_score']:.4f}")
     
-    print(f"\n📊 RUN 2")
+    print(f"\nRUN 2")
     print(f"  • Seuil optimal (Youden's J) : {youden2['threshold']:.4f}")
     print(f"  • AUC                        : {youden2['auc']:.4f}")
     print(f"  • TPR (Sensibilité)          : {youden2['tpr']:.4f}")
@@ -546,13 +546,12 @@ def main():
     print_statistics(youden1, youden2)
     
     print("\n" + "="*80)
-    print("✅ ANALYSE TERMINÉE")
-    print(f"📂 Résultats disponibles dans : {OUTPUT_DIR}")
+    print("ANALYSE TERMINÉE")
+    print(f"Résultats disponibles dans : {OUTPUT_DIR}")
     print("="*80)
-    print("\n💡 Les fichiers HTML sont interactifs (zoom, hover, export)")
-    print("💡 Les fichiers PNG sont de haute qualité pour les publications\n")
+    print("\nLes fichiers HTML sont interactifs (zoom, hover, export)")
+    print("Les fichiers PNG sont de haute qualité pour les publications\n")
 
 
 if __name__ == "__main__":
     main()
-

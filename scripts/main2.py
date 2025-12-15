@@ -302,7 +302,7 @@ def classify_cmd(args):
     start = time.time()
 
     try:
-        print("\n[1/3] Running classification pipeline...")
+        print("\n[1/4] Running classification pipeline...")
         
         # Prepare simulation config for run2 if provided
         sim_config_2 = None
@@ -386,7 +386,7 @@ def classify_cmd(args):
         try:
             generate_plotly_plots()
         except Exception as e:
-            print(f"⚠️  Warning: Could not generate Plotly plots: {e}")
+            print(f"Warning: Could not generate Plotly plots: {e}")
 
         # Optional post-processing (only if user requests a report)
         if args.report_output:

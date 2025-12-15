@@ -76,7 +76,7 @@ def run_classification(realali, simali, output, config, tools, two_iterations=Fa
     if two_iterations:
         command.append("--two-iterations")
 
-    print("\n🚀 Launching classification pipeline…")
-    print(f"    → script: {pipeline_script}")
-    print(f"    → mode: {'TWO-ITERATIONS' if two_iterations else 'RUN1 ONLY'}")
+    print("\nLaunching classification pipeline…")
+    print(f"→ script: {pipeline_script}")
+    print(f"→ mode: {'TWO-ITERATIONS' if two_iterations else 'RUN1 ONLY'}")
     subprocess.run(command, check=True)
