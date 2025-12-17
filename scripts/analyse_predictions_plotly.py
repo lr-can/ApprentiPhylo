@@ -16,6 +16,26 @@ RESULTS_DIR = Path("results/classification")
 OUTPUT_DIR = RESULTS_DIR / "predictions_analysis"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+def _default_youden_stats() -> dict:
+    """Stats par défaut quand un run n'est pas disponible / pas exploitable."""
+    return {
+        "threshold": 0.5,
+        "tpr": float("nan"),
+        "fpr": float("nan"),
+        "j_score": float("nan"),
+        "auc": float("nan"),
+    }
+
+
+def _fmt_youden_title(run_number: int, youden: dict | None) -> str:
+    if youden is None:
+        return f"RUN {run_number} - Indisponible"
+    thr = youden.get("threshold", 0.5)
+    try:
+        return f"RUN {run_number} - Seuil Youden: {float(thr):.3f}"
+    except Exception:
+        return f"RUN {run_number} - Seuil Youden: N/A"
+
 
 def calculate_youden_threshold(y_true, y_score):
     """Calcule le seuil optimal avec le J de Youden"""
@@ -144,13 +164,19 @@ def create_violin_and_box_plots():
     # Charger les données
     run1_df, youden1 = load_predictions_with_labels(1)
     run2_df, youden2 = load_predictions_with_labels(2)
+
+    # Sécuriser les stats (évite NoneType quand un run est absent)
+    youden1_safe = youden1 if youden1 is not None else _default_youden_stats()
+    youden2_safe = youden2 if youden2 is not None else _default_youden_stats()
+    has_run1 = run1_df is not None
+    has_run2 = run2_df is not None
     
     # Créer subplots simples: 1 ligne, 2 colonnes (RUN 1 et RUN 2)
     fig = make_subplots(
         rows=1, cols=2,
         subplot_titles=(
-            f'RUN 1 - Seuil Youden: {youden1["threshold"]:.3f}',
-            f'RUN 2 - Seuil Youden: {youden2["threshold"]:.3f}'
+            _fmt_youden_title(1, youden1),
+            _fmt_youden_title(2, youden2),
         ),
         horizontal_spacing=0.15
     )
@@ -183,11 +209,11 @@ def create_violin_and_box_plots():
         
         # Lignes de seuil pour RUN 1
         fig.add_hline(
-            y=youden1['threshold'],
+            y=youden1_safe['threshold'],
             line_dash="dash",
             line_color="red",
             line_width=2.5,
-            annotation_text=f"Youden: {youden1['threshold']:.3f}",
+            annotation_text=f"Youden: {youden1_safe['threshold']:.3f}",
             annotation_position="right",
             row=1, col=1
         )
@@ -228,11 +254,11 @@ def create_violin_and_box_plots():
         
         # Lignes de seuil pour RUN 2
         fig.add_hline(
-            y=youden2['threshold'],
+            y=youden2_safe['threshold'],
             line_dash="dash",
             line_color="red",
             line_width=2.5,
-            annotation_text=f"Youden: {youden2['threshold']:.3f}",
+            annotation_text=f"Youden: {youden2_safe['threshold']:.3f}",
             annotation_position="right",
             row=1, col=2
         )
@@ -273,10 +299,11 @@ def create_violin_and_box_plots():
     print(f"  - HTML (interactif) : {html_path}")
     print(f"  - PNG (statique)    : {png_path}")
     
-    return youden1, youden2
+    # Retourner les stats "safe" + flags de disponibilité
+    return youden1_safe, youden2_safe, has_run1, has_run2
 
 
-def create_histograms(youden1, youden2):
+def create_histograms(youden1, youden2, has_run1: bool = True, has_run2: bool = True):
     """Génère des histogrammes avec Plotly"""
     print("\n📊 Génération des histogrammes avec Plotly...\n")
     
@@ -294,7 +321,7 @@ def create_histograms(youden1, youden2):
     )
     
     # RUN 1
-    if run1_df is not None:
+    if has_run1 and run1_df is not None:
         sim = run1_df.filter(pl.col("true_label") == 0)["prob_real"].to_numpy()
         real = run1_df.filter(pl.col("true_label") == 1)["prob_real"].to_numpy()
         
@@ -344,7 +371,7 @@ def create_histograms(youden1, youden2):
         )
     
     # RUN 2
-    if run2_df is not None:
+    if has_run2 and run2_df is not None:
         sim = run2_df.filter(pl.col("true_label") == 0)["prob_real"].to_numpy()
         real = run2_df.filter(pl.col("true_label") == 1)["prob_real"].to_numpy()
         
@@ -423,7 +450,7 @@ def create_histograms(youden1, youden2):
     print(f"  - PNG (statique)    : {png_path}")
 
 
-def create_boxplots_comparison(youden1, youden2):
+def create_boxplots_comparison(youden1, youden2, has_run1: bool = True, has_run2: bool = True):
     """Génère un boxplot comparatif entre RUN 1 et RUN 2"""
     print("\n📊 Génération du boxplot comparatif avec Plotly...\n")
     
@@ -438,7 +465,13 @@ def create_boxplots_comparison(youden1, youden2):
     # Préparer les données
     data_list = []
     
-    for run_num, (run_df, youden) in enumerate([(run1_df, youden1), (run2_df, youden2)], 1):
+    runs = []
+    if has_run1:
+        runs.append((1, run1_df, youden1))
+    if has_run2:
+        runs.append((2, run2_df, youden2))
+
+    for run_num, run_df, youden in runs:
         if run_df is None:
             continue
         
@@ -457,24 +490,25 @@ def create_boxplots_comparison(youden1, youden2):
                 )
             )
     
-    # Ajouter les seuils de Youden
-    fig.add_hline(
-        y=youden1['threshold'],
-        line_dash="dash",
-        line_color="red",
-        line_width=2,
-        annotation_text=f"RUN 1 Youden: {youden1['threshold']:.3f}",
-        annotation_position="left"
-    )
-    
-    fig.add_hline(
-        y=youden2['threshold'],
-        line_dash="dash",
-        line_color="darkred",
-        line_width=2,
-        annotation_text=f"RUN 2 Youden: {youden2['threshold']:.3f}",
-        annotation_position="right"
-    )
+    # Ajouter les seuils de Youden (uniquement pour les runs présents)
+    if has_run1:
+        fig.add_hline(
+            y=youden1['threshold'],
+            line_dash="dash",
+            line_color="red",
+            line_width=2,
+            annotation_text=f"RUN 1 Youden: {youden1['threshold']:.3f}",
+            annotation_position="left"
+        )
+    if has_run2:
+        fig.add_hline(
+            y=youden2['threshold'],
+            line_dash="dash",
+            line_color="darkred",
+            line_width=2,
+            annotation_text=f"RUN 2 Youden: {youden2['threshold']:.3f}",
+            annotation_position="right"
+        )
     
     # Ligne de référence 0.5
     fig.add_hline(
@@ -509,25 +543,31 @@ def create_boxplots_comparison(youden1, youden2):
     print(f"  - PNG (statique)    : {png_path}")
 
 
-def print_statistics(youden1, youden2):
+def print_statistics(youden1, youden2, has_run1: bool = True, has_run2: bool = True):
     """Affiche les statistiques des seuils de Youden"""
     print("\n" + "="*80)
     print("STATISTIQUES DES SEUILS DE YOUDEN")
     print("="*80 + "\n")
     
-    print("📊 RUN 1")
-    print(f"  • Seuil optimal (Youden's J) : {youden1['threshold']:.4f}")
-    print(f"  • AUC                        : {youden1['auc']:.4f}")
-    print(f"  • TPR (Sensibilité)          : {youden1['tpr']:.4f}")
-    print(f"  • FPR                        : {youden1['fpr']:.4f}")
-    print(f"  • J statistic                : {youden1['j_score']:.4f}")
-    
-    print(f"\n📊 RUN 2")
-    print(f"  • Seuil optimal (Youden's J) : {youden2['threshold']:.4f}")
-    print(f"  • AUC                        : {youden2['auc']:.4f}")
-    print(f"  • TPR (Sensibilité)          : {youden2['tpr']:.4f}")
-    print(f"  • FPR                        : {youden2['fpr']:.4f}")
-    print(f"  • J statistic                : {youden2['j_score']:.4f}")
+    if has_run1:
+        print("📊 RUN 1")
+        print(f"  • Seuil optimal (Youden's J) : {youden1['threshold']:.4f}")
+        print(f"  • AUC                        : {youden1['auc']:.4f}")
+        print(f"  • TPR (Sensibilité)          : {youden1['tpr']:.4f}")
+        print(f"  • FPR                        : {youden1['fpr']:.4f}")
+        print(f"  • J statistic                : {youden1['j_score']:.4f}")
+    else:
+        print("📊 RUN 1 indisponible")
+
+    if has_run2:
+        print(f"\n📊 RUN 2")
+        print(f"  • Seuil optimal (Youden's J) : {youden2['threshold']:.4f}")
+        print(f"  • AUC                        : {youden2['auc']:.4f}")
+        print(f"  • TPR (Sensibilité)          : {youden2['tpr']:.4f}")
+        print(f"  • FPR                        : {youden2['fpr']:.4f}")
+        print(f"  • J statistic                : {youden2['j_score']:.4f}")
+    else:
+        print(f"\n📊 RUN 2 indisponible (pas encore exécuté, ou pas de labels exploitables)")
     
     print("\n" + "="*80 + "\n")
 
@@ -538,12 +578,12 @@ def main():
     print("="*80 + "\n")
     
     # Créer les visualisations
-    youden1, youden2 = create_violin_and_box_plots()
-    create_histograms(youden1, youden2)
-    create_boxplots_comparison(youden1, youden2)
+    youden1, youden2, has_run1, has_run2 = create_violin_and_box_plots()
+    create_histograms(youden1, youden2, has_run1=has_run1, has_run2=has_run2)
+    create_boxplots_comparison(youden1, youden2, has_run1=has_run1, has_run2=has_run2)
     
     # Afficher les statistiques
-    print_statistics(youden1, youden2)
+    print_statistics(youden1, youden2, has_run1=has_run1, has_run2=has_run2)
     
     print("\n" + "="*80)
     print("✅ ANALYSE TERMINÉE")

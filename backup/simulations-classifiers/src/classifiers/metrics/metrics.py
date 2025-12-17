@@ -28,6 +28,8 @@ class ModelOutputMetric(IgniteMetric):
         List to store predictions.
     target : list
         List to store targets.
+    indices : list
+        List to store sample indices for mapping back to filenames.
     """
 
     def __init__(
@@ -38,6 +40,7 @@ class ModelOutputMetric(IgniteMetric):
         super().__init__(output_transform=output_transform, device=device)
         self.pred = []
         self.target = []
+        self.indices = []
 
     def reset(self):
         """
@@ -45,6 +48,7 @@ class ModelOutputMetric(IgniteMetric):
         """
         self.pred = []
         self.target = []
+        self.indices = []
 
     def update(self, output) -> None:
         """
@@ -54,10 +58,14 @@ class ModelOutputMetric(IgniteMetric):
         ----------
         output : tuple
             A tuple containing predictions and targets.
+            If a third element (indices) is provided, it will be stored.
         """
         pred, target = output[0].detach(), output[1].detach()
         self.pred.append(pred)
         self.target.append(target)
+        # Try to capture indices if available (for filename mapping)
+        if len(output) > 2:
+            self.indices.append(output[2])
 
     def compute(self) -> pl.DataFrame:
         """
@@ -67,6 +75,7 @@ class ModelOutputMetric(IgniteMetric):
         -------
         pl.DataFrame
             A DataFrame containing logits, probabilities, predictions, and targets.
+            If indices were captured, they will be included as 'index' column.
 
         Notes
         -----
@@ -78,14 +87,25 @@ class ModelOutputMetric(IgniteMetric):
         preds = (probs > 0.5).to(torch.int8)
         target = torch.vstack(self.target).squeeze().to(torch.int8)
 
-        return pl.DataFrame(
-            {
-                "logit": logits.cpu().numpy(),
-                "prob": probs.cpu().numpy(),
-                "pred": preds.cpu().numpy(),
-                "target": target.cpu().numpy(),
-            }
-        )
+        result_dict = {
+            "logit": logits.cpu().numpy(),
+            "prob": probs.cpu().numpy(),
+            "pred": preds.cpu().numpy(),
+            "target": target.cpu().numpy(),
+        }
+        
+        # Add indices if available
+        if self.indices:
+            # Flatten indices if they are tensors
+            indices_flat = []
+            for idx in self.indices:
+                if isinstance(idx, torch.Tensor):
+                    indices_flat.extend(idx.cpu().tolist())
+                else:
+                    indices_flat.extend(idx if isinstance(idx, list) else [idx])
+            result_dict["index"] = indices_flat[:len(logits)]
+
+        return pl.DataFrame(result_dict)
 
 
 class CustomMetric(IgniteMetric):

@@ -158,8 +158,84 @@ sudo fc-cache -f -v
 
 ---
 
+## Dashboard de Classification
+
+Le fichier `classifier_dashboard.py` est un dashboard interactif créé avec Streamlit pour visualiser et présenter les résultats du pipeline de classification.
+
+### Installation des dépendances
+
+```bash
+pip install streamlit plotly pandas polars biopython
+```
+
+### Utilisation
+
+Pour lancer le dashboard :
+
+```bash
+streamlit run classifier_dashboard.py
+```
+
+Le dashboard s'ouvrira automatiquement dans votre navigateur à l'adresse `http://localhost:8501`.
+
+### Fonctionnalités
+
+Le dashboard permet de visualiser :
+
+1. **Vue d'ensemble des données** : Statistiques sur les alignements réels et simulés
+2. **Classificateurs** : Informations détaillées sur chaque classificateur et leur processus d'embedding
+3. **Résultats d'entraînement** : Courbes d'apprentissage, métriques de performance
+4. **Prédictions** : Distribution des probabilités, meilleures prédictions
+5. **Courbes ROC** : Performance de classification
+6. **Comparaison** : Comparaison des performances entre différents classificateurs
+
+### Configuration
+
+Dans la barre latérale du dashboard, vous pouvez configurer :
+
+- **Chemin données réelles** : Répertoire contenant les alignements réels (format FASTA)
+- **Chemin données simulées** : Répertoire contenant les alignements simulés (format FASTA)
+- **Chemin résultats classification** : Répertoire contenant les résultats de classification (généré par le pipeline)
+- **Run** : Sélectionner le run 1 ou 2 à visualiser
+
+### Structure des résultats attendue
+
+Le dashboard s'attend à trouver les résultats dans la structure suivante :
+
+```
+results/classification/
+├── run_1/
+│   ├── AACnnClassifier/
+│   │   ├── train_history.parquet
+│   │   └── best_preds.parquet
+│   ├── LogisticRegressionClassifier/
+│   │   └── ...
+│   └── roc_data/
+│       ├── AACnnClassifier_roc.csv
+│       └── ...
+└── run_2/
+    └── ...
+```
+
+### Utilisation pour présentation
+
+Le dashboard est conçu pour être utilisé lors de présentations PowerPoint. Vous pouvez :
+
+1. Lancer le dashboard en mode plein écran
+2. Naviguer entre les différentes sections
+3. Capturer des captures d'écran des visualisations pour les inclure dans votre présentation
+4. Utiliser les graphiques interactifs Plotly qui peuvent être exportés en images haute résolution
+
+### Export des graphiques
+
+Les graphiques Plotly peuvent être exportés en cliquant sur l'icône de caméra dans la barre d'outils de chaque graphique, ou en utilisant le menu contextuel (clic droit) pour exporter en PNG, SVG ou HTML.
+
+---
+
 ## Ressources
 
 - [Braille Institute](https://www.brailleinstitute.org/freefont)
 - [SIL Open Font License](https://openfontlicense.org)
+- [Streamlit Documentation](https://docs.streamlit.io/)
+- [Plotly Documentation](https://plotly.com/python/)
 

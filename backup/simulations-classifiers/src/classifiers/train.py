@@ -305,7 +305,46 @@ class Training:
 
         This method saves the predictions and targets from the best performing
         epoch to a Parquet file for further analysis or evaluation.
+        It also adds filenames by mapping back to the validation dataset.
         """
-
         best_preds_path = self.out_path / "best_preds.parquet"
-        self.best_epoch["metrics"]["output"].write_parquet(best_preds_path)
+        output_df = self.best_epoch["metrics"]["output"]
+        
+        # Try to add filenames from the validation dataset
+        try:
+            # Access the underlying dataset from the validation loader
+            # valid_loader.dataset is a Subset from random_split
+            # valid_loader.dataset.dataset is the original dataset
+            valid_dataset = self.valid_loader.dataset
+            if hasattr(valid_dataset, 'dataset'):
+                # It's a Subset from random_split
+                original_dataset = valid_dataset.dataset
+                subset_indices = valid_dataset.indices
+                
+                # Get filenames from the original dataset
+                if hasattr(original_dataset, 'keys'):
+                    dataset_keys = original_dataset.keys
+                    # Map subset indices to filenames
+                    filenames = [dataset_keys[i] for i in subset_indices]
+                    
+                    # Add filenames to the DataFrame
+                    if len(filenames) == len(output_df):
+                        output_df = output_df.with_columns([
+                            pl.Series("filename", filenames)
+                        ])
+                    else:
+                        # If length mismatch, try to use index column if available
+                        if "index" in output_df.columns:
+                            # Map indices to filenames
+                            index_values = output_df["index"].to_list()
+                            filenames_mapped = [dataset_keys[i] if i < len(dataset_keys) else f"unknown_{i}" 
+                                                for i in index_values]
+                            output_df = output_df.with_columns([
+                                pl.Series("filename", filenames_mapped)
+                            ])
+        except Exception as e:
+            # If we can't get filenames, just save without them
+            # This maintains backward compatibility
+            pass
+        
+        output_df.write_parquet(best_preds_path)
