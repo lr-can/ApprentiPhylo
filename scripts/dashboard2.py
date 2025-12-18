@@ -16,6 +16,9 @@ from plotly.subplots import make_subplots
 import flask
 import traceback
 import re
+import json
+import ast
+from markupsafe import escape
 
 # Importer polars seulement si disponible
 try:
@@ -1496,10 +1499,10 @@ def make_app():
         """List available files in the left column; updates periodically or on click."""
         try:
             # Metrics
-            metrics_file = results_path() / "metrics" / "phylo_metrics.csv"
+            metrics_file = results_path() / "metrics_results" / "mpd_results.csv"
             if metrics_file.exists():
                 mf_node = dbc.Badge(
-                    [html.I(className="bi bi-check-circle me-1"), "phylo_metrics.csv"],
+                    [html.I(className="bi bi-check-circle me-1"), "mpd_results.csv"],
                     color="success",
                     className="me-1"
                 )
@@ -1509,20 +1512,71 @@ def make_app():
                     color="secondary"
                 )
 
-            # Classification (attempt common filenames)
+            # Classification (adapter aux sorties actuelles: parquet/logs/exports)
             cd = results_path() / "classification"
             classif_candidates = []
             if cd.exists():
-                for candidate in sorted(cd.glob("*.csv")):
+                def file_row(p: Path, label: str | None = None):
+                    ok = p.exists()
+                    icon = "bi-check-circle" if ok else "bi-x-circle"
+                    color = "#198754" if ok else "#6c757d"
+                    rel = None
+                    try:
+                        rel = str(p.resolve().relative_to(results_path().resolve()))
+                    except Exception:
+                        rel = None
+                    return html.Div(
+                        [
+                            html.I(className=f"bi {icon} me-1", style={"color": color}),
+                            (html.A(
+                                label or str(p.relative_to(cd)),
+                                href=f"/view-results/{rel}" if (ok and rel and p.is_file()) else None,
+                                target="_blank",
+                                style={"textDecoration": "none"} if (ok and rel and p.is_file()) else {},
+                            ) if (label or True) else html.Span("")),
+                            (html.Span(" ", className="me-1") if (ok and rel and p.is_file()) else html.Span()),
+                            (html.A(
+                                "[download]",
+                                href=f"/download-results/{rel}",
+                                target="_blank",
+                                className="small text-muted",
+                                style={"marginLeft": "6px"},
+                            ) if (ok and rel and p.is_file()) else html.Span()),
+                        ],
+                        className="mb-1",
+                    )
+
+                # fichiers clés
+                classif_candidates.extend(
+                    [
+                        file_row(cd / "pipeline_20251217-120751.log", "pipeline log (dernier)"),
+                        file_row(cd / "run_1" / "preds_run1.parquet"),
+                        file_row(cd / "run_2" / "preds_run2.parquet"),
+                        file_row(cd / "run_2" / "dashboard_dataset.parquet"),
+                        file_row(cd / "run_2" / "new_sim_predictions.parquet"),
+                    ]
+                )
+
+                # afficher le vrai "dernier pipeline log" si présent
+                pipeline_logs = sorted(cd.glob("pipeline_*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if pipeline_logs:
+                    classif_candidates[0] = file_row(pipeline_logs[0], f"pipeline log (dernier): {pipeline_logs[0].name}")
+
+                # exports (dossiers)
+                exports_dir = cd / "exports"
+                if exports_dir.exists():
                     classif_candidates.append(
-                        html.Div([
-                            html.I(className="bi bi-file-earmark-spreadsheet me-1"),
-                            html.Span(candidate.name, className="small")
-                        ], className="mb-1")
+                        html.Div(
+                            [
+                                html.I(className="bi bi-folder2-open me-1"),
+                                html.A("exports/", href="/browse-results/classification/exports", target="_blank", className="small", style={"textDecoration": "none"}),
+                            ],
+                            className="mt-2 mb-1",
+                        )
                     )
             if not classif_candidates:
                 classif_candidates = [html.Div(
-                    [html.I(className="bi bi-info-circle me-1"), "Aucun CSV de classification"],
+                    [html.I(className="bi bi-info-circle me-1"), "Aucun fichier de classification trouvé"],
                     className="text-muted small"
                 )]
 
@@ -1704,14 +1758,47 @@ def make_app():
                         ], width=3),
                         dbc.Col([
                             dbc.Card([
-                                dbc.CardHeader("Chemins des données utilisées pour RUN 2"),
+                                dbc.CardHeader("Dossiers de résultats (RUN 2 / exports)"),
                                 dbc.CardBody([
-                                    html.P([html.Strong("Réelles: ")], style={"fontSize": "10px"}),
-                                    html.P(run_stats['run2_real_path'], style={"fontSize": "9px", "wordBreak": "break-all"}),
-                                    html.P([html.Strong("Simulées (gardées après RUN 1): ")], style={"fontSize": "10px"}),
-                                    html.P(run_stats['run2_sim_path'], style={"fontSize": "9px", "wordBreak": "break-all"}),
-                                    html.P("Note: Ces simulations ont été gardées après RUN 1 et réutilisées pour RUN 2", 
-                                           style={"fontSize": "8px", "color": "gray", "marginTop": "5px"}),
+                                    html.P([html.Strong("RUN2 réelles (entrée): ")], style={"fontSize": "10px"}),
+                                    html.P(
+                                        html.A(
+                                            str((classif_dir / "run_2_real").resolve()),
+                                            href="/browse-results/classification/run_2_real",
+                                            target="_blank",
+                                            style={"textDecoration": "none", "fontSize": "9px", "wordBreak": "break-all"},
+                                        )
+                                    ),
+                                    html.P([html.Strong("RUN2 simulées (entrée): ")], style={"fontSize": "10px"}),
+                                    html.P(
+                                        html.A(
+                                            str((classif_dir / "run_2_sim").resolve()),
+                                            href="/browse-results/classification/run_2_sim",
+                                            target="_blank",
+                                            style={"textDecoration": "none", "fontSize": "9px", "wordBreak": "break-all"},
+                                        )
+                                    ),
+                                    html.Hr(),
+                                    html.P([html.Strong("RUN2 new_sim/: ")], style={"fontSize": "10px"}),
+                                    html.P(
+                                        html.A(
+                                            str((classif_dir / "run_2" / "new_sim").resolve()),
+                                            href="/browse-results/classification/run_2/new_sim",
+                                            target="_blank",
+                                            style={"textDecoration": "none", "fontSize": "9px", "wordBreak": "break-all"},
+                                        )
+                                    ),
+                                    html.Hr(),
+                                    html.P([html.Strong("Exports (canonique): ")], style={"fontSize": "10px"}),
+                                    html.P(
+                                        html.A(
+                                            str((classif_dir / "exports").resolve()),
+                                            href="/browse-results/classification/exports",
+                                            target="_blank",
+                                            style={"textDecoration": "none", "fontSize": "9px", "wordBreak": "break-all"},
+                                        )
+                                    ),
+                                    html.P("Note: `exports/run2_dataset/` contient les FASTA utilisés pour RUN2 (real/sim).", style={"fontSize": "8px", "color": "gray", "marginTop": "5px"}),
                                 ])
                             ])
                         ], width=3),
@@ -1988,19 +2075,9 @@ def make_app():
                     params = parse_qs(url_search.lstrip('?'))
                     if 'tree' in params:
                         tree_name = params['tree'][0]
-                
-                # Debug: afficher les paramètres URL
-                debug_info = dbc.Alert([
-                    html.Strong("Debug - URL params:"),
-                    html.Br(),
-                    html.Small(f"URL search: {url_search}", className="text-muted"),
-                    html.Br(),
-                    html.Small(f"Tree name: {tree_name}", className="text-muted")
-                ], color="light", className="mb-2")
-                
+
                 if not tree_name:
                     return html.Div([
-                        debug_info,
                         dbc.Card([
                             dbc.CardBody([
                                 html.Div([
@@ -2017,7 +2094,6 @@ def make_app():
                 p = results_path() / "trees" / tree_name
                 if not p.exists():
                     return html.Div([
-                        debug_info,
                         dbc.Alert(f"Le fichier d'arbre '{tree_name}' n'existe plus. Chemin: {p}", color="danger")
                     ])
                 
@@ -2157,7 +2233,7 @@ def make_app():
                         ], color="info")
                     )
                 
-                return html.Div([debug_info] + content)
+                return html.Div(content)
 
             elif tab == "tab-logs":
                 lf = get_project_root() / "logs" / "pipeline_log.csv"
@@ -2193,22 +2269,171 @@ def make_app():
                         
                         df_logs["duration"] = df_logs["duration"].apply(format_duration)
                     
-                    # Colorer le statut
-                    def colorize_status(row):
-                        status = str(row["status"]).lower() if pd.notna(row["status"]) else ""
-                        status_str = str(row["status"]) if pd.notna(row["status"]) else "N/A"
-                        if "success" in status:
-                            return "[OK] " + status_str
-                        elif "error" in status:
-                            return "[ERROR] " + status_str
-                        else:
-                            return "[INFO] " + status_str
-                    
-                    if "status" in df_logs.columns:
-                        df_logs["status"] = df_logs.apply(colorize_status, axis=1)
-                    
                     # Limiter à 100 dernières entrées
                     display_df = df_logs.head(100)
+
+                    def parse_args(val):
+                        if pd.isna(val):
+                            return None
+                        s = str(val)
+                        # La colonne args est souvent un repr() de dict python
+                        try:
+                            return ast.literal_eval(s)
+                        except Exception:
+                            # Certains logs contiennent des objets non-littéraux (ex: <function ...>)
+                            try:
+                                s2 = re.sub(r"<function[^>]*>", "'<function>'", s)
+                                return ast.literal_eval(s2)
+                            except Exception:
+                                pass
+                            # fallback: essayer json direct
+                            try:
+                                return json.loads(s)
+                            except Exception:
+                                return s
+
+                    def pretty_json(obj) -> str:
+                        if obj is None:
+                            return ""
+                        if isinstance(obj, str):
+                            return obj
+                        return json.dumps(obj, indent=2, ensure_ascii=False, default=str)
+
+                    def status_badge(status_raw: str):
+                        s = (status_raw or "").lower()
+                        if "success" in s or s.strip() == "ok":
+                            return dbc.Badge("[OK]", color="success", pill=True, className="me-2")
+                        if "error" in s or "failed" in s or "exception" in s:
+                            return dbc.Badge("[ERROR]", color="danger", pill=True, className="me-2")
+                        return dbc.Badge("[INFO]", color="secondary", pill=True, className="me-2")
+
+                    accordion_items = []
+                    for _, row in display_df.iterrows():
+                        step = str(row.get("step", "N/A"))
+                        status = str(row.get("status", "N/A"))
+                        duration = str(row.get("duration", ""))
+                        raw_args = row.get("args", "")
+                        args_obj = parse_args(raw_args)
+                        args_pretty = pretty_json(args_obj)
+
+                        # Extraire une "commande" si possible
+                        cmd = None
+                        if isinstance(args_obj, dict):
+                            cmd = args_obj.get("command") or args_obj.get("cmd")
+                        if not cmd:
+                            # fallback si args non parseable: extraire depuis la string
+                            try:
+                                m = re.search(r"['\"]command['\"]\s*:\s*['\"]([^'\"]+)['\"]", str(raw_args))
+                                if m:
+                                    cmd = m.group(1)
+                            except Exception:
+                                pass
+
+                        def build_cmdline(obj, raw) -> str:
+                            """Construit une pseudo ligne de commande lisible."""
+                            if isinstance(obj, dict):
+                                parts = [str(obj.get("command") or obj.get("cmd") or "")]
+                                # ordre préférentiel
+                                preferred = ["yaml", "config", "real_align", "sim_align", "align", "tree", "output", "threshold", "tools", "two_iterations", "no_progress"]
+                                keys = [k for k in preferred if k in obj] + [k for k in obj.keys() if k not in preferred and k not in ("command", "cmd", "func")]
+                                for k in keys:
+                                    v = obj.get(k)
+                                    if v is None:
+                                        continue
+                                    flag = f"--{k.replace('_','-')}"
+                                    if isinstance(v, bool):
+                                        if v:
+                                            parts.append(flag)
+                                    else:
+                                        parts.append(flag)
+                                        parts.append(str(v))
+                                line = " ".join([p for p in parts if p])
+                                return line.strip() or "(non disponible)"
+                            # si c'est une string, retourner la version brute (raccourcie)
+                            s = str(raw)
+                            return (s[:400] + (" ..." if len(s) > 400 else "")) if s else "(non disponible)"
+
+                        cmdline = build_cmdline(args_obj, raw_args)
+
+                        title = html.Div(
+                            [
+                                status_badge(status),
+                                html.Span(step, style={"fontWeight": 700}),
+                                html.Span(f"  {duration}" if duration else "", className="text-muted small ms-2"),
+                                html.Div(
+                                    status,
+                                    className="text-muted",
+                                    style={"fontSize": "12px", "marginTop": "2px"},
+                                ),
+                            ],
+                            style={"lineHeight": "1.15"},
+                        )
+
+                        accordion_items.append(
+                            dbc.AccordionItem(
+                                [
+                                    html.Div(
+                                        [
+                                            html.Div(
+                                                [
+                                                    html.Div(
+                                                        [
+                                                            html.Small("commande:", className="text-muted"),
+                                                            html.Div(
+                                                                [
+                                                                    html.Span(
+                                                                        (cmd or "commande"),
+                                                                        style={"color": "#7ee787", "fontWeight": 800},
+                                                                    ),
+                                                                    html.Span("  ", style={"whiteSpace": "pre"}),
+                                                                    html.Span(
+                                                                        cmdline.replace(str(cmd or ""), "", 1).strip() if cmd else cmdline,
+                                                                        style={"color": "#c9d1d9"},
+                                                                    ),
+                                                                ],
+                                                                style={
+                                                                    "backgroundColor": "#0b1220",
+                                                                    "color": "#e6edf3",
+                                                                    "padding": "10px 12px",
+                                                                    "borderRadius": "8px",
+                                                                    "fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                                                                    "fontSize": "13px",
+                                                                    "border": "1px solid rgba(255,255,255,0.08)",
+                                                                    "overflowX": "auto",
+                                                                    "whiteSpace": "pre",
+                                                                },
+                                                            )
+                                                        ],
+                                                        className="mb-2",
+                                                    ),
+                                                    html.Div(
+                                                        [
+                                                            html.Small("args:", className="text-muted"),
+                                                            html.Pre(
+                                                                args_pretty,
+                                                                style={
+                                                                    "backgroundColor": "#0b1220",
+                                                                    "color": "#c9d1d9",
+                                                                    "padding": "10px 12px",
+                                                                    "borderRadius": "8px",
+                                                                    "fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                                                                    "fontSize": "12px",
+                                                                    "maxHeight": "260px",
+                                                                    "overflowY": "auto",
+                                                                    "overflowX": "auto",
+                                                                    "border": "1px solid rgba(255,255,255,0.08)",
+                                                                },
+                                                            ),
+                                                        ]
+                                                    ),
+                                                ]
+                                            )
+                                        ]
+                                    )
+                                ],
+                                title=title,
+                            )
+                        )
                     
                     return html.Div([
                         dbc.Card([
@@ -2223,25 +2448,20 @@ def make_app():
                                     html.Strong(f"Total d'entrées: {len(df_logs)} | "),
                                     f"Affichage des {min(100, len(df_logs))} plus récentes"
                                 ], color="info", className="mb-3"),
-                                
-                                html.Div([
-                                    dbc.Table.from_dataframe(
-                                        display_df,
-                                        striped=True,
-                                        bordered=True,
-                                        hover=True,
-                                        responsive=True,
-                                        size="sm",
-                                        style={"fontSize": "13px"}
-                                    )
-                                ], style={"maxHeight": "600px", "overflowY": "auto"}),
+
+                                dbc.Accordion(
+                                    accordion_items,
+                                    start_collapsed=True,
+                                    flush=True,
+                                    always_open=False,
+                                ),
                                 
                                 html.Hr(),
                                 dbc.Button(
                                     [html.I(className="bi bi-download me-2"), "Télécharger les logs complets"],
                                     color="secondary",
                                     size="sm",
-                                    href=str(lf),
+                                    href="/download-results/logs/pipeline_log.csv",
                                     external_link=True
                                 )
                             ])
@@ -2384,6 +2604,69 @@ def make_app():
         if not p.exists():
             return flask.abort(404)
         return flask.send_file(str(p), as_attachment=True, download_name=filename)
+
+    def _safe_results_path(rel_path: str) -> Path | None:
+        """
+        Construit un chemin sûr sous results/ (protège contre ..).
+        Retourne None si le chemin sort de results/.
+        """
+        base = results_path().resolve()
+        p = (base / rel_path).resolve()
+        try:
+            p.relative_to(base)
+        except Exception:
+            return None
+        return p
+
+    @server.route("/download-results/<path:relpath>")
+    def download_results(relpath):
+        p = _safe_results_path(relpath)
+        if p is None or (not p.exists()) or p.is_dir():
+            return flask.abort(404)
+        return flask.send_file(str(p), as_attachment=True, download_name=p.name)
+
+    @server.route("/view-results/<path:relpath>")
+    def view_results(relpath):
+        p = _safe_results_path(relpath)
+        if p is None or (not p.exists()) or p.is_dir():
+            return flask.abort(404)
+        # Affichage texte simple (limite taille)
+        try:
+            size = p.stat().st_size
+            max_bytes = 200_000
+            with open(p, "rb") as f:
+                raw = f.read(max_bytes)
+            text = raw.decode("utf-8", errors="replace")
+            if size > max_bytes:
+                text += "\n\n... (tronqué) ..."
+        except Exception as e:
+            text = f"Erreur de lecture: {e}"
+        return flask.Response(
+            f"<pre style='white-space:pre-wrap;font-family:monospace'>{escape(text)}</pre>",
+            mimetype="text/html",
+        )
+
+    @server.route("/browse-results/<path:relpath>")
+    def browse_results(relpath):
+        p = _safe_results_path(relpath)
+        if p is None or (not p.exists()) or (not p.is_dir()):
+            return flask.abort(404)
+        items = []
+        for child in sorted(p.iterdir()):
+            rel = str(child.resolve().relative_to(results_path().resolve()))
+            if child.is_dir():
+                items.append(f"<li>📁 <a href='/browse-results/{rel}'>{child.name}/</a></li>")
+            else:
+                items.append(
+                    f"<li>📄 {child.name} "
+                    f"[<a href='/view-results/{rel}'>view</a>] "
+                    f"[<a href='/download-results/{rel}'>download</a>]</li>"
+                )
+        html_body = (
+            f"<h3>Browsing: results/{escape(relpath)}</h3>"
+            "<ul>" + "\n".join(items) + "</ul>"
+        )
+        return flask.Response(html_body, mimetype="text/html")
 
     return app, server
 
