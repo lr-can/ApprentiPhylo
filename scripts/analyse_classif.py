@@ -122,7 +122,7 @@ def plot_learning_curves(df, output_dir):
                 else:
                     run_label = ""
                 
-                plt.title(f"Courbe d'apprentissage - {clf} ({run_label})")
+                plt.title(f"Learning curve - {clf} ({run_label})")
                 plt.xlabel("Epoch")
                 plt.ylabel("Loss")
                 plt.legend()
@@ -356,7 +356,7 @@ def generate_pdf_report(train_df, pred_df, plots, output_pdf):
 
     # Section : Courbes d’apprentissage
     pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 10, safe_text("Courbes d’apprentissage :"), ln=True)
+    pdf.cell(0, 10, safe_text("Learning curves :"), ln=True)
 
     for plot in plots:
         pdf.add_page()
