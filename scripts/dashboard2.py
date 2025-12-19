@@ -19,6 +19,10 @@ import re
 import json
 import ast
 from markupsafe import escape
+import subprocess
+from sklearn.metrics import roc_curve, auc
+
+
 
 # Importer polars seulement si disponible
 try:
@@ -126,7 +130,6 @@ def load_roc_data(classifier, run_number):
             return None
         
         # Calculer la courbe ROC
-        from sklearn.metrics import roc_curve, auc
         y_true = preds_df[label_col].values
         y_score = preds_df[prob_col].values
         
@@ -975,6 +978,31 @@ def load_dashboard_dataset_df(classif_dir: Path) -> pd.DataFrame | None:
         return None
 
 
+
+def load_or_build_dashboard_dataset_df(classif_dir: Path) -> pd.DataFrame | None:
+    """
+    Charge le dataset dashboard.
+    S'il n'existe pas, le construit automatiquement puis recharge.
+    """
+    ds = load_dashboard_dataset_df(classif_dir)
+    if ds is not None and not ds.empty:
+        return ds
+
+    # Dataset absent → tentative de construction
+    try:
+        print("[Dashboard] dashboard_dataset.parquet not found, building it...")
+        subprocess.run(
+            ["uv", "run", "python", "scripts/build_dashboard_dataset.py"],
+            check=True
+        )
+    except Exception as e:
+        print(f"[Dashboard] Failed to build dashboard dataset: {e}")
+        return None
+
+    # Recharge après construction
+    return load_dashboard_dataset_df(classif_dir)
+
+
 def compute_dashboard_stats(df: pd.DataFrame) -> dict:
     """Stats fiables basées sur dashboard_dataset.parquet."""
     stats: dict = {}
@@ -1711,7 +1739,7 @@ def make_app():
                 
                 # Récupérer les statistiques des runs
                 run_stats = get_run_statistics()
-                ds_df = load_dashboard_dataset_df(classif_dir)
+                ds_df = load_or_build_dashboard_dataset_df(classif_dir)
                 ds_stats = compute_dashboard_stats(ds_df) if ds_df is not None else None
                 
                 children = [

@@ -518,13 +518,13 @@ if __name__ == "__main__":
 # === COMMANDES EXEMPLES (TEST QUICK-START) ===
 """
 # --- AVEC YAML ---
-python3 scripts/main2.py simulate --yaml config/yaml/simulate.yaml
-python3 scripts/main2.py classify --yaml config/yaml/classify.yaml
-python3 scripts/main2.py classify --yaml config/yaml/classify_full.yaml
+python3 scripts/main.py simulate --yaml config/yaml/simulate.yaml
+python3 scripts/main.py classify --yaml config/yaml/classify.yaml
+python3 scripts/main.py classify --yaml config/yaml/classify_full.yaml
 
 
 # --- SIMULATION ---
-python3 scripts/main2.py simulate \
+python3 scripts/main.py simulate \
     --pre-input data/prot_mammals \
     --pre-output results/preprocessed \
     --minseq 5 \
@@ -540,7 +540,7 @@ python3 scripts/main2.py simulate \
 
     
 # --- METRICS ---
-python3 scripts/main2.py metrics \
+python3 scripts/main.py metrics \
     --empirical results/preprocessed/clean_data \
     --simulation results/simulations/ \
     --output results \
@@ -548,7 +548,7 @@ python3 scripts/main2.py metrics \
 
     
 # --- CLASSIFY : RUN 1 SEULEMENT ---
-python3 scripts/main2.py classify \
+python3 scripts/main.py classify \
     --real-align results/preprocessed/clean_data \
     --sim-align results/simulations \
     --output results/classification \
@@ -557,7 +557,7 @@ python3 scripts/main2.py classify \
 
 
 # --- CLASSIFY : RUN 1 + RUN 2 (refinement) ---
-python3 scripts/main2.py classify \
+python3 scripts/main.py classify \
     --real-align results/preprocessed/clean_data \
     --sim-align results/simulations \
     --output results/classification \
@@ -567,7 +567,7 @@ python3 scripts/main2.py classify \
 
 
 # --- CLASSIFY : RUN 1 + RUN 2 + PDF REPORT ---
-python3 scripts/main2.py classify \
+python3 scripts/main.py classify \
     --real-align results/preprocessed/clean_data \
     --sim-align results/simulations \
     --output results/classification \
@@ -578,5 +578,5 @@ python3 scripts/main2.py classify \
 
     
 # --- VISUALISATION ---
-python3 scripts/main2.py visualisation
+python3 scripts/main.py visualisation
 """

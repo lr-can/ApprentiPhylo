@@ -1121,8 +1121,16 @@ class Pipeline:
         alphabet = sim_config.get("alphabet", "aa")
         ext_rate = sim_config.get("ext_rate")
         
-        # Determine source alignments directory (use run_2_real as source for new simulations)
+        # Determine source alignments directory for new simulations.
+        # Prefer run_2_real (if already built), otherwise fall back to the original real dataset.
         source_align_dir = self.out_path / "run_2_real"
+        if not source_align_dir.exists():
+            # base_data.source_real.root points to the real alignments directory used in Run1
+            try:
+                source_align_dir = Path(self.base_data.source_real.root)  # type: ignore[attr-defined]
+            except Exception:
+                source_align_dir = Path(self.real_path) if hasattr(self, "real_path") else source_align_dir  # type: ignore
+
         if not source_align_dir.exists():
             self.logger.warning(f"[NEW SIMS] Source alignment directory not found: {source_align_dir}")
             return [], pl.DataFrame()
@@ -1174,8 +1182,10 @@ class Pipeline:
         # Now filter using the best model from Run1
         self.logger.info("[NEW SIMS] Filtering new simulations using best model from Run1...")
         
-        # Create a temporary Data object with new simulations
-        temp_real_dir = self.out_path / "run_2_real"
+        # Create a temporary Data object with new simulations.
+        # IMPORTANT: run_2_real does not exist yet at this point (it is created later in build_run2_dataset()).
+        # So we must use the real source directory used for simulation/filtering (source_align_dir).
+        temp_real_dir = source_align_dir
         temp_sim_dir = new_sim_dir
         
         temp_data = Data(
@@ -1488,6 +1498,93 @@ class Pipeline:
                 f"[RUN 2] Dataset unbalanced: {num_real_final} real vs {num_sim_final} simulated "
                 f"(difference: {num_real_final - num_sim_final})"
             )
+
+    # =================================================================
+    #          EXPORT CANONICAL FOLDERS FOR DASHBOARD / AUDIT
+    # =================================================================
+    def export_dashboard_folders(self, selected_run1: list[str], selected_run2: set[str]) -> None:
+        """
+        Export explicit folders to make it unambiguous which files are:
+          - used as Run2 training dataset (run_2_real / run_2_sim)
+          - selected ("passed") at Run1
+          - selected ("passed") at Run2
+
+        This helps dashboards and downstream scripts avoid relying on filenames
+        inside parquet tables (which may get _sim suffixes due to collisions).
+        """
+        import shutil
+
+        out = self.out_path
+        r2_real = out / "run_2_real"
+        r2_sim = out / "run_2_sim"
+
+        # Canonical mirrors of the dataset actually used for Run2 training
+        export_r2_ds_real = out / "exports" / "run2_dataset" / "real"
+        export_r2_ds_sim = out / "exports" / "run2_dataset" / "sim"
+        export_r2_ds_real.mkdir(parents=True, exist_ok=True)
+        export_r2_ds_sim.mkdir(parents=True, exist_ok=True)
+
+        # Copy current run2 dataset (these are the authoritative training inputs)
+        if r2_real.exists():
+            for f in r2_real.glob("*.fasta"):
+                try:
+                    shutil.copy(f, export_r2_ds_real / f.name)
+                except Exception:
+                    pass
+        if r2_sim.exists():
+            for f in r2_sim.glob("*.fasta"):
+                try:
+                    shutil.copy(f, export_r2_ds_sim / f.name)
+                except Exception:
+                    pass
+
+        # Export selections as explicit folders (only SIMULATED files)
+        export_sel_r1 = out / "exports" / "selected" / "run1"
+        export_sel_r2 = out / "exports" / "selected" / "run2"
+        export_sel_r1.mkdir(parents=True, exist_ok=True)
+        export_sel_r2.mkdir(parents=True, exist_ok=True)
+
+        # Run1 selected sims come from run_2_sim (copied there in build_run2_dataset)
+        # Normalize names: remove "_sim" suffix in stem if any.
+        def _normalize_name(fname: str) -> str:
+            if fname.endswith(".fasta"):
+                stem = fname[:-6]
+                ext = ".fasta"
+            elif fname.endswith(".fa"):
+                stem = fname[:-3]
+                ext = ".fa"
+            else:
+                stem = fname
+                ext = ""
+            if stem.endswith("_sim"):
+                return stem[:-4] + ext
+            return fname
+
+        if r2_sim.exists():
+            # Selected at run1 (by filename list)
+            for fname in selected_run1:
+                norm = _normalize_name(fname)
+                src = r2_sim / norm
+                if src.exists():
+                    try:
+                        shutil.copy(src, export_sel_r1 / norm)
+                    except Exception:
+                        pass
+
+            # Selected at run2 (by filename set) — also expected to be in r2_sim
+            for fname in selected_run2:
+                norm = _normalize_name(str(fname))
+                src = r2_sim / norm
+                if src.exists():
+                    try:
+                        shutil.copy(src, export_sel_r2 / norm)
+                    except Exception:
+                        pass
+
+        self.logger.info(
+            f"[EXPORT] Dashboard folders written under: {out / 'exports'} "
+            f"(run2_dataset + selected/run1 + selected/run2)"
+        )
 
     # =================================================================
     #                  RUN 2 RETRAIN BEST MODEL
@@ -1831,6 +1928,12 @@ class Pipeline:
         # Save Run 2 predictions
         if not preds_run2.is_empty():
             preds_run2.write_parquet(self.out_path / "run_2/preds_run2.parquet")
+
+        # Export explicit folders for dashboard/audit (inputs + selections)
+        try:
+            self.export_dashboard_folders(selected_1, selected_2)
+        except Exception as e:
+            self.logger.warning(f"[EXPORT] Failed to export dashboard folders: {e}")
 
         # Final summary
         self.logger.info("=== PIPELINE COMPLETE ===")
