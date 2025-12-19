@@ -2,6 +2,7 @@
 # Dash dashboard complet avec callbacks et auto-refresh.
 import io
 import base64
+import hashlib
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode
 import pandas as pd
@@ -15,6 +16,9 @@ from plotly.subplots import make_subplots
 import flask
 import traceback
 import re
+import json
+import ast
+from markupsafe import escape
 
 # Importer polars seulement si disponible
 try:
@@ -35,7 +39,40 @@ except Exception:
 
 # Using only matplotlib with Bio.Phylo for tree visualization
 
-REFRESH_INTERVAL_MS = 60000  # auto-refresh every 1 minute
+REFRESH_INTERVAL_MS = 600000  # auto-refresh every 10 minutes
+
+
+COLOR_REAL = "#2E86AB"      # bleu
+COLOR_SIM = "#A23B72"       # violet/rouge
+
+
+def md5sum_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    """Calcule le MD5 d'un fichier (streaming, sans tout charger en RAM)."""
+    h = hashlib.md5()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def build_md5_map(directory: Path) -> dict[str, str]:
+    """
+    Construit un mapping {filename -> md5} pour tous les .fasta d'un dossier.
+    Retourne {} si le dossier n'existe pas.
+    """
+    if not directory.exists():
+        return {}
+    md5_map: dict[str, str] = {}
+    for f in directory.glob("*.fasta"):
+        try:
+            md5_map[f.name] = md5sum_file(f)
+        except Exception:
+            # Ne pas casser le dashboard si un fichier est illisible
+            md5_map[f.name] = "ERROR"
+    return md5_map
 
 
 def get_project_root():
@@ -173,9 +210,29 @@ def get_alignment_length(fasta_path):
 def get_best_predictions_run2():
     """Charge et enrichit les meilleures prédictions du RUN 2 avec infos RUN 1 et longueurs"""
     base_dir = results_path() / "classification"
+    dashboard_ds = base_dir / "run_2" / "dashboard_dataset.parquet"
     preds_run2_file = base_dir / "run_2" / "preds_run2.parquet"
     preds_run1_file = base_dir / "run_1" / "preds_run1.parquet"
+    run2_sim_dir = base_dir / "run_2_sim"
+    run2_real_dir = base_dir / "run_2_real"
     
+    # Prefer the dedicated dashboard dataset if available
+    if dashboard_ds.exists():
+        try:
+            if HAS_POLARS:
+                df = pl.read_parquet(dashboard_ds).to_pandas()
+            else:
+                df = pd.read_parquet(dashboard_ds)
+            # Keep only simulations that passed BOTH run1 and run2 thresholds
+            if {"true_label", "passed_run1", "passed_run2"}.issubset(set(df.columns)):
+                df = df[(df["true_label"] == 0) & (df["passed_run1"] == True) & (df["passed_run2"] == True)]  # noqa: E712
+            # Sort by run2 score if available
+            if "prob_real_run2" in df.columns:
+                df = df.sort_values("prob_real_run2", ascending=False)
+            return df
+        except Exception as e:
+            print(f"Erreur lors du chargement de dashboard_dataset.parquet: {e}")
+
     if not preds_run2_file.exists():
         return None
     
@@ -184,8 +241,39 @@ def get_best_predictions_run2():
         if HAS_POLARS:
             df_run2 = pl.read_parquet(preds_run2_file)
             
-            if "prob_real" not in df_run2.columns or "filename" not in df_run2.columns:
+            if "prob_real" not in df_run2.columns:
                 return None
+            
+            # Si filename n'existe pas ou contient des valeurs incorrectes, essayer de le reconstruire
+            need_rebuild = False
+            if "filename" not in df_run2.columns:
+                need_rebuild = True
+            else:
+                # Vérifier si les noms de fichiers sont tous identiques ou invalides (ex: tous "0")
+                unique_filenames = df_run2["filename"].unique().to_list()
+                if len(unique_filenames) == 1 and (unique_filenames[0] in ["0", "1", ""] or not str(unique_filenames[0]).endswith(".fasta")):
+                    need_rebuild = True
+            
+            if need_rebuild:
+                # Essayer de trouver les fichiers de simulation pour reconstruire les noms
+                run2_sim_dir = base_dir / "run_2_sim"
+                if run2_sim_dir.exists():
+                    sim_files = sorted([f.name for f in run2_sim_dir.glob("*.fasta")])
+                    if len(sim_files) == len(df_run2):
+                        # Si le nombre correspond, utiliser les noms de fichiers
+                        df_run2 = df_run2.with_columns([
+                            pl.Series("filename", sim_files)
+                        ])
+                    else:
+                        # Sinon, créer des noms génériques
+                        df_run2 = df_run2.with_columns([
+                            pl.Series("filename", [f"sim_{i}.fasta" for i in range(len(df_run2))])
+                        ])
+                else:
+                    # Créer des noms génériques si le dossier n'existe pas
+                    df_run2 = df_run2.with_columns([
+                        pl.Series("filename", [f"sim_{i}.fasta" for i in range(len(df_run2))])
+                    ])
             
             # Charger aussi les prédictions RUN 1 si elles existent
             df_run1 = None
@@ -198,7 +286,6 @@ def get_best_predictions_run2():
                     df_run1 = df_run1.rename({"pred_class": "pred_class_run1"})
             
             # Filtrer uniquement les simulations de RUN 2
-            run2_sim_dir = base_dir / "run_2_sim"
             if not run2_sim_dir.exists():
                 return None
             
@@ -219,8 +306,33 @@ def get_best_predictions_run2():
             # Fallback pandas
             df_run2 = pd.read_parquet(preds_run2_file)
             
-            if "prob_real" not in df_run2.columns or "filename" not in df_run2.columns:
+            if "prob_real" not in df_run2.columns:
                 return None
+            
+            # Si filename n'existe pas ou contient des valeurs incorrectes, essayer de le reconstruire
+            need_rebuild = False
+            if "filename" not in df_run2.columns:
+                need_rebuild = True
+            else:
+                # Vérifier si les noms de fichiers sont tous identiques ou invalides (ex: tous "0")
+                unique_filenames = df_run2["filename"].unique()
+                if len(unique_filenames) == 1 and (unique_filenames[0] in ["0", "1", ""] or not str(unique_filenames[0]).endswith(".fasta")):
+                    need_rebuild = True
+            
+            if need_rebuild:
+                # Essayer de trouver les fichiers de simulation pour reconstruire les noms
+                run2_sim_dir = base_dir / "run_2_sim"
+                if run2_sim_dir.exists():
+                    sim_files = sorted([f.name for f in run2_sim_dir.glob("*.fasta")])
+                    if len(sim_files) == len(df_run2):
+                        # Si le nombre correspond, utiliser les noms de fichiers
+                        df_run2["filename"] = sim_files
+                    else:
+                        # Sinon, créer des noms génériques
+                        df_run2["filename"] = [f"sim_{i}.fasta" for i in range(len(df_run2))]
+                else:
+                    # Créer des noms génériques si le dossier n'existe pas
+                    df_run2["filename"] = [f"sim_{i}.fasta" for i in range(len(df_run2))]
             
             # Charger RUN 1
             df_run1 = None
@@ -229,7 +341,6 @@ def get_best_predictions_run2():
                 df_run1 = df_run1.rename(columns={"prob_real": "prob_real_run1", "pred_class": "pred_class_run1"})
             
             # Filtrer simulations
-            run2_sim_dir = base_dir / "run_2_sim"
             if not run2_sim_dir.exists():
                 return None
             
@@ -247,15 +358,30 @@ def get_best_predictions_run2():
         # Ajouter les longueurs d'alignement
         alignment_lengths = []
         num_sequences = []
+        md5s = []
+        paths = []
+        md5_map_sim = build_md5_map(run2_sim_dir)
+        md5_map_real = build_md5_map(run2_real_dir)
         
         for filename in df_pandas["filename"]:
             file_path = run2_sim_dir / filename
             length, n_seqs = get_alignment_length(file_path)
             alignment_lengths.append(length if length is not None else "N/A")
             num_sequences.append(n_seqs if n_seqs is not None else "N/A")
+            # MD5: d'abord tenter dans run_2_sim, sinon run_2_real
+            md5s.append(md5_map_sim.get(filename) or md5_map_real.get(filename) or "N/A")
+            # Path: d'abord tenter run_2_sim, sinon run_2_real
+            if (run2_sim_dir / filename).exists():
+                paths.append(str((run2_sim_dir / filename).resolve()))
+            elif (run2_real_dir / filename).exists():
+                paths.append(str((run2_real_dir / filename).resolve()))
+            else:
+                paths.append("N/A")
         
         df_pandas["alignment_length"] = alignment_lengths
         df_pandas["num_sequences"] = num_sequences
+        df_pandas["md5"] = md5s
+        df_pandas["path"] = paths
         
         # Renommer les colonnes pour plus de clarté
         rename_dict = {
@@ -280,7 +406,7 @@ def get_best_predictions_run2():
             cols_order.append("pred_class_run2")
         
         # Ajouter les infos d'alignement
-        cols_order.extend(["alignment_length", "num_sequences"])
+        cols_order.extend(["alignment_length", "num_sequences", "md5", "path"])
         
         # Ajouter les autres colonnes restantes
         for col in df_pandas.columns:
@@ -302,14 +428,106 @@ def get_best_predictions_run2():
 
 
 def create_run1_run2_scatter_plot(base_dir):
-    """Crée un scatter plot comparant les scores Run1 vs Run2 avec couleurs pour réel/simulé"""
+    """Crée un scatter plot comparant les scores Run1 vs Run2 avec couleurs pour réel/simulé
+    et indique quelles séquences ont été gardées vs filtrées selon les seuils de Youden"""
     try:
+        # Si un dataset dashboard "clean" existe, l'utiliser directement
+        dashboard_ds = base_dir / "run_2" / "dashboard_dataset.parquet"
+        if dashboard_ds.exists():
+            try:
+                if HAS_POLARS:
+                    df = pl.read_parquet(dashboard_ds).to_pandas()
+                else:
+                    df = pd.read_parquet(dashboard_ds)
+
+                # Scatter: comparer scores run1 vs run2, colorer par vrai label (réel/simulé),
+                # afficher seuils Youden et passer l'échelle en % (0-100).
+                required = {"prob_real_run1", "prob_real_run2"}
+                if required.issubset(set(df.columns)):
+                    # Scatter: montrer où se situent les RÉELS et les SIMULÉS.
+                    # Le passage des seuils est encodé par les symboles (status) pour les simulés.
+
+                    df["label_text"] = df.get("label_text", "Inconnu")
+                    valid = {"Réel", "Simulé", "Inconnu"}
+                    df["label_text"] = df["label_text"].apply(lambda x: x if x in valid else "Inconnu")
+
+                    # Affichage "passé" lisible: utiliser status si présent
+                    if "status" in df.columns:
+                        color_col = "label_text"  # couleur simple Réel vs Simulé
+                        symbol_col = "status"     # symbole encode passé R1/R2
+                    else:
+                        color_col = "label_text"
+                        symbol_col = None
+
+                    # Convertir en pourcentage pour l'affichage
+                    df["x_pct"] = df["prob_real_run1"] * 100.0
+                    df["y_pct"] = df["prob_real_run2"] * 100.0
+
+                    # Symbol map (si status existe)
+                    symbol_map = None
+                    if symbol_col == "status":
+                        symbol_map = {
+                            "Réel": "circle",
+                            "Simulé (passé R1+R2)": "diamond",
+                            "Simulé (passé R1)": "triangle-up",
+                            "Simulé (passé R2)": "triangle-down",
+                            "Simulé (filtré)": "x",
+                        }
+
+                    fig = px.scatter(
+                        df,
+                        x="x_pct",
+                        y="y_pct",
+                        color=color_col,
+                        symbol=symbol_col,
+                        symbol_map=symbol_map,
+                        color_discrete_map={"Réel": COLOR_REAL, "Simulé": COLOR_SIM, "Inconnu": "gray"},
+                        hover_data=[c for c in ["filename", "md5", "path", "passed_run1", "passed_run2", "youden_run1", "youden_run2"] if c in df.columns],
+                        labels={
+                            "x_pct": "Score Run1 (%)",
+                            "y_pct": "Score Run2 (%)",
+                            "label_text": "Type",
+                            "status": "Passage seuils",
+                        },
+                        title="Comparaison des scores Run1 vs Run2 (Meilleur classifieur) — Réel vs Simulé | lignes: Youden",
+                    )
+
+                    # Axes 0-100%
+                    fig.update_xaxes(range=[0, 100], ticksuffix="%", title="Score Run1 (%)")
+                    fig.update_yaxes(range=[0, 100], ticksuffix="%", title="Score Run2 (%)")
+
+                    # Lignes de seuil Youden (si disponibles)
+                    if "youden_run1" in df.columns and df["youden_run1"].notna().any():
+                        y1 = float(df["youden_run1"].dropna().iloc[0]) * 100.0
+                        fig.add_vline(x=y1, line_dash="dot", line_color="orange", annotation_text=f"Youden R1: {y1:.1f}%", annotation_position="top")
+                    if "youden_run2" in df.columns and df["youden_run2"].notna().any():
+                        y2 = float(df["youden_run2"].dropna().iloc[0]) * 100.0
+                        fig.add_hline(y=y2, line_dash="dot", line_color="purple", annotation_text=f"Youden R2: {y2:.1f}%", annotation_position="right")
+
+                    fig.update_layout(template="plotly_white", height=650, hovermode="closest")
+                    return fig
+            except Exception as e:
+                print(f"Erreur lors du chargement de dashboard_dataset.parquet pour scatter: {e}")
+
         # Charger les prédictions Run1 et Run2
         preds_run1_file = base_dir / "run_1" / "preds_run1.parquet"
         preds_run2_file = base_dir / "run_2" / "preds_run2.parquet"
         
         if not preds_run1_file.exists() or not preds_run2_file.exists():
             return None
+        
+        # Récupérer les seuils de Youden depuis les logs
+        run_stats = get_run_statistics()
+        threshold_run1 = None
+        threshold_run2 = None
+        
+        try:
+            if run_stats.get('run1_threshold') != "N/A":
+                threshold_run1 = float(run_stats['run1_threshold'])
+            if run_stats.get('run2_threshold') != "N/A":
+                threshold_run2 = float(run_stats['run2_threshold'])
+        except (ValueError, TypeError):
+            pass
         
         # Charger les données
         if HAS_POLARS:
@@ -337,41 +555,178 @@ def create_run1_run2_scatter_plot(base_dir):
                 label_col = col
                 break
         
-        # Fusionner les données sur filename
-        df_merged = df_run1_pd[["filename", prob_col_run1]].merge(
-            df_run2_pd[["filename", prob_col_run2]],
+        # Filtrer pour ne garder que les alignements qui ont été conservés après run1
+        # (c'est-à-dire ceux qui sont présents dans run2)
+        run2_real_dir = base_dir / "run_2_real"
+        run2_sim_dir = base_dir / "run_2_sim"
+        
+        # Récupérer la liste des fichiers qui ont été gardés après run1
+        kept_after_run1 = set()
+        
+        if run2_real_dir.exists():
+            kept_after_run1.update(f.name for f in run2_real_dir.glob("*.fasta"))
+        if run2_sim_dir.exists():
+            kept_after_run1.update(f.name for f in run2_sim_dir.glob("*.fasta"))
+        
+        # Préparer MD5 (pour vérifier qu'on compare bien les mêmes fichiers)
+        md5_map_sim = build_md5_map(run2_sim_dir)
+        md5_map_real = build_md5_map(run2_real_dir)
+
+        # Filtrer les DataFrames pour ne garder que les alignements conservés après run1
+        if kept_after_run1:
+            df_run1_pd_filtered = df_run1_pd[df_run1_pd["filename"].isin(kept_after_run1)].copy()
+            df_run2_pd_filtered = df_run2_pd[df_run2_pd["filename"].isin(kept_after_run1)].copy()
+        else:
+            # Si les dossiers n'existent pas, utiliser tous les alignements (fallback)
+            df_run1_pd_filtered = df_run1_pd.copy()
+            df_run2_pd_filtered = df_run2_pd.copy()
+        
+        # Fusionner les données sur filename (seulement pour les alignements conservés)
+        df_merged = df_run1_pd_filtered[["filename", prob_col_run1]].merge(
+            df_run2_pd_filtered[["filename", prob_col_run2]],
             on="filename",
             how="inner",
             suffixes=("_run1", "_run2")
         )
+
+        # Ajouter le MD5 au merged (utile pour débugger les "mêmes" fichiers)
+        df_merged["md5"] = df_merged["filename"].map(
+            lambda fn: md5_map_sim.get(fn) or md5_map_real.get(fn) or "N/A"
+        )
+        # Ajouter le path au merged (run_2_sim prioritaire, sinon run_2_real)
+        def _resolve_path(fn: str) -> str:
+            p_sim = run2_sim_dir / fn
+            if p_sim.exists():
+                return str(p_sim.resolve())
+            p_real = run2_real_dir / fn
+            if p_real.exists():
+                return str(p_real.resolve())
+            return "N/A"
+
+        df_merged["path"] = df_merged["filename"].map(_resolve_path)
         
         # Ajouter les labels si disponibles
         if label_col and label_col in df_run1_pd.columns:
             labels = df_run1_pd[["filename", label_col]].set_index("filename")[label_col].to_dict()
             df_merged["label"] = df_merged["filename"].map(labels)
-            df_merged["label_text"] = df_merged["label"].map({0: "Simulé", 1: "Réel"})
+            # Mapper les labels en texte, en gérant les valeurs NaN/None
+            df_merged["label_text"] = df_merged["label"].map({0: "Simulé", 1: "Réel"}).fillna("Inconnu")
         else:
             df_merged["label_text"] = "Inconnu"
         
-        # Créer le scatter plot
-        fig = px.scatter(
-            df_merged,
-            x=f"{prob_col_run1}_run1",
-            y=f"{prob_col_run2}_run2",
-            color="label_text",
-            color_discrete_map={"Réel": "blue", "Simulé": "red", "Inconnu": "gray"},
-            hover_data=["filename"],
-            labels={
-                f"{prob_col_run1}_run1": "Score Run1 (prob_real)",
-                f"{prob_col_run2}_run2": "Score Run2 (prob_real)",
-                "label_text": "Type"
-            },
-            title="Comparaison des scores de prédiction Run1 vs Run2"
+        # S'assurer que toutes les valeurs sont bien dans le color_discrete_map
+        # Remplacer toute valeur non reconnue par "Inconnu"
+        valid_labels = {"Réel", "Simulé", "Inconnu"}
+        df_merged["label_text"] = df_merged["label_text"].apply(
+            lambda x: x if x in valid_labels else "Inconnu"
         )
         
-        # Ajouter une ligne diagonale (y=x)
+        # Ajouter une colonne pour indiquer si la séquence simulée a été gardée ou filtrée
+        # Une séquence simulée est gardée si prob_real >= seuil de Youden
+        df_merged["kept_run1"] = False
+        df_merged["kept_run2"] = False
+        
+        if threshold_run1 is not None:
+            # Pour run1 : séquences simulées avec prob_real >= seuil
+            mask_sim_run1 = df_merged["label_text"] == "Simulé"
+            df_merged.loc[mask_sim_run1, "kept_run1"] = (
+                df_merged.loc[mask_sim_run1, f"{prob_col_run1}_run1"] >= threshold_run1
+            )
+        
+        if threshold_run2 is not None:
+            # Pour run2 : séquences simulées avec prob_real >= seuil
+            mask_sim_run2 = df_merged["label_text"] == "Simulé"
+            df_merged.loc[mask_sim_run2, "kept_run2"] = (
+                df_merged.loc[mask_sim_run2, f"{prob_col_run2}_run2"] >= threshold_run2
+            )
+        
+        # Créer une colonne combinée pour l'affichage
+        def get_status(row):
+            if row["label_text"] == "Réel":
+                return "Réel"
+            elif row["label_text"] == "Simulé":
+                kept1 = row.get("kept_run1", False)
+                kept2 = row.get("kept_run2", False)
+                if kept1 and kept2:
+                    return "Simulé (gardée R1+R2)"
+                elif kept1:
+                    return "Simulé (gardée R1)"
+                elif kept2:
+                    return "Simulé (gardée R2)"
+                else:
+                    return "Simulé (filtrée)"
+            else:
+                return "Inconnu"
+        
+        df_merged["status"] = df_merged.apply(get_status, axis=1)
+        
+        # Vérifier qu'on a des données valides
+        if df_merged.empty:
+            return None
+        
+        # Créer le scatter plot avec les statuts détaillés
+        use_go_scatter = False
+        try:
+            # Utiliser la colonne status pour un meilleur affichage
+            color_map = {
+                "Réel": "blue",
+                "Simulé (gardée R1+R2)": "green",
+                "Simulé (gardée R1)": "orange",
+                "Simulé (gardée R2)": "yellow",
+                "Simulé (filtrée)": "red",
+                "Inconnu": "gray"
+            }
+            
+            fig = px.scatter(
+                df_merged,
+                x=f"{prob_col_run1}_run1",
+                y=f"{prob_col_run2}_run2",
+                color="status",
+                color_discrete_map=color_map,
+                hover_data=["filename", "md5", "path"],
+                labels={
+                    f"{prob_col_run1}_run1": "Score Run1 (prob_real)",
+                    f"{prob_col_run2}_run2": "Score Run2 (prob_real)",
+                    "status": "Statut"
+                },
+                title="Comparaison des scores Run1 vs Run2 (alignements conservés après Run1)<br><sub>Lignes: seuils de Youden | Couleurs: statut de filtrage Run2</sub>"
+            )
+        except Exception as e:
+            # Si px.scatter échoue, essayer avec go.Scatter directement
+            print(f"Erreur avec px.scatter, utilisation de go.Scatter: {e}")
+            use_go_scatter = True
+            fig = go.Figure()
+            
+            # Ajouter les traces pour chaque statut
+            color_map = {
+                "Réel": "blue",
+                "Simulé (gardée R1+R2)": "green",
+                "Simulé (gardée R1)": "orange",
+                "Simulé (gardée R2)": "yellow",
+                "Simulé (filtrée)": "red",
+                "Inconnu": "gray"
+            }
+            
+            for status_type, color in color_map.items():
+                mask = df_merged["status"] == status_type
+                if mask.any():
+                    fig.add_trace(go.Scatter(
+                        x=df_merged.loc[mask, f"{prob_col_run1}_run1"],
+                        y=df_merged.loc[mask, f"{prob_col_run2}_run2"],
+                        mode='markers',
+                        name=status_type,
+                        marker=dict(color=color, size=8),
+                        text=df_merged.loc[mask, "filename"],
+                        customdata=df_merged.loc[mask, ["md5", "path"]].values,
+                        hovertemplate='%{text}<br>MD5: %{customdata[0]}<br>Path: %{customdata[1]}<br>Run1: %{x:.3f}<br>Run2: %{y:.3f}<br>Statut: '
+                        + status_type + '<extra></extra>'
+                    ))
+        
+        # Ajouter les lignes de seuil de Youden
         max_val = max(df_merged[f"{prob_col_run1}_run1"].max(), df_merged[f"{prob_col_run2}_run2"].max())
         min_val = min(df_merged[f"{prob_col_run1}_run1"].min(), df_merged[f"{prob_col_run2}_run2"].min())
+        
+        # Ligne diagonale (y=x)
         fig.add_trace(go.Scatter(
             x=[min_val, max_val],
             y=[min_val, max_val],
@@ -381,11 +736,44 @@ def create_run1_run2_scatter_plot(base_dir):
             showlegend=False
         ))
         
-        fig.update_layout(
-            template="plotly_white",
-            height=600,
-            hovermode='closest'
-        )
+        # Ligne verticale pour le seuil Run1
+        if threshold_run1 is not None:
+            fig.add_vline(
+                x=threshold_run1,
+                line_dash="dot",
+                line_color="orange",
+                annotation_text=f"Youden R1: {threshold_run1:.3f}",
+                annotation_position="top",
+                opacity=0.7
+            )
+        
+        # Ligne horizontale pour le seuil Run2
+        if threshold_run2 is not None:
+            fig.add_hline(
+                y=threshold_run2,
+                line_dash="dot",
+                line_color="purple",
+                annotation_text=f"Youden R2: {threshold_run2:.3f}",
+                annotation_position="right",
+                opacity=0.7
+            )
+        
+        # Mettre à jour le layout une seule fois à la fin
+        layout_updates = {
+            "template": "plotly_white",
+            "height": 600,
+            "hovermode": 'closest'
+        }
+        
+        # Si on a utilisé go.Scatter (fallback), ajouter les titres d'axes
+        if use_go_scatter:
+            layout_updates.update({
+                "xaxis_title": f"Score Run1 ({prob_col_run1})",
+                "yaxis_title": f"Score Run2 ({prob_col_run2})",
+                "title": "Comparaison des scores Run1 vs Run2 (alignements conservés après Run1)<br><sub>Lignes: seuils de Youden | Couleurs: statut de filtrage Run2</sub>"
+            })
+        
+        fig.update_layout(**layout_updates)
         
         return fig
     
@@ -508,27 +896,34 @@ def get_run_statistics():
     if stats["initial_sim"] > 0:
         stats["run1_kept_percentage"] = (stats["run1_kept_sim"] / stats["initial_sim"]) * 100
     
-    # Chercher le threshold utilisé dans les logs
-    log_file = list(base_dir.glob("pipeline_*.log"))
-    if log_file:
+    # Chercher le threshold utilisé dans les logs (prendre le plus récent)
+    log_files = list(base_dir.glob("pipeline_*.log"))
+    log_path = None
+    if log_files:
+        log_path = max(log_files, key=lambda p: p.stat().st_mtime)
+
+    if log_path:
         try:
-            with open(log_file[0], 'r') as f:
+            with open(log_path, 'r') as f:
                 content = f.read()
                 # Chercher le pattern pour le threshold
-                match = re.search(r"optimal threshold = ([\d.]+)", content)
+                match = re.search(r"\[RUN 1\].*?optimal threshold = ([\d.]+)", content)
+                if not match:
+                    match = re.search(r"optimal threshold = ([\d.]+)", content)
                 if match:
                     stats["run1_threshold"] = match.group(1)
         except:
             pass
     
-    # Données après run 2 : extraire depuis les logs
-    # Le nombre de fichiers gardés est loggé comme "[RUN 2] Selected X sims flagged REAL"
-    if log_file:
+    # Données après run 2 : extraire depuis les logs (formats multiples)
+    if log_path:
         try:
-            with open(log_file[0], 'r') as f:
+            with open(log_path, 'r') as f:
                 content = f.read()
                 # Chercher le pattern pour RUN 2
-                match = re.search(r"\[RUN 2\] Selected (\d+) sims flagged REAL", content)
+                # Ex: "[RUN 2] Selected 68 sims flagged REAL"
+                # ou  "[RUN 2] Selected 68 sims flagged REAL (7.90% of initial 861 simulated alignments)"
+                match = re.search(r"\[RUN 2\]\s+Selected\s+(\d+)\s+sims\s+flagged\s+REAL", content)
                 if match:
                     stats["run2_kept_sim"] = int(match.group(1))
                     
@@ -545,7 +940,260 @@ def get_run_statistics():
         except Exception as e:
             print(f"Erreur lors de la lecture du log pour RUN 2: {e}")
     
+    # Fallback: si le log n'a pas l'info RUN2, utiliser le dataset dashboard (source plus fiable)
+    try:
+        ds = load_dashboard_dataset_df(base_dir)
+        if ds is not None and not ds.empty:
+            ds_stats = compute_dashboard_stats(ds)
+            if stats["run2_threshold"] == "N/A" and ds_stats.get("youden_run2") is not None:
+                stats["run2_threshold"] = f"{ds_stats['youden_run2']:.4f}"
+            if stats["run2_kept_sim"] == 0 and ds_stats.get("n_sim_passed_both") is not None:
+                # Attention: ds_stats['n_sim_passed_both'] = simulés passés R1&R2 (plus strict),
+                # mais c'est au moins une valeur non nulle si RUN2 existe.
+                stats["run2_kept_sim"] = int(ds_stats["n_sim_passed_both"])
+                if stats["run1_kept_sim"] > 0:
+                    stats["run2_kept_percentage_from_run1"] = (stats["run2_kept_sim"] / stats["run1_kept_sim"]) * 100
+                if stats["initial_sim"] > 0:
+                    stats["run2_kept_percentage_from_initial"] = (stats["run2_kept_sim"] / stats["initial_sim"]) * 100
+    except Exception:
+        pass
+
     return stats
+
+
+def load_dashboard_dataset_df(classif_dir: Path) -> pd.DataFrame | None:
+    """Charge le dataset dashboard (Run2) si présent."""
+    p = classif_dir / "run_2" / "dashboard_dataset.parquet"
+    if not p.exists():
+        return None
+    try:
+        if HAS_POLARS:
+            return pl.read_parquet(p).to_pandas()
+        return pd.read_parquet(p)
+    except Exception as e:
+        print(f"Erreur lors du chargement de {p}: {e}")
+        return None
+
+
+def compute_dashboard_stats(df: pd.DataFrame) -> dict:
+    """Stats fiables basées sur dashboard_dataset.parquet."""
+    stats: dict = {}
+    stats["n_total"] = len(df)
+    if "true_label" in df.columns:
+        stats["n_real"] = int((df["true_label"] == 1).sum())
+        stats["n_sim"] = int((df["true_label"] == 0).sum())
+    else:
+        stats["n_real"] = None
+        stats["n_sim"] = None
+
+    # Youden thresholds (run1/run2)
+    stats["youden_run1"] = float(df["youden_run1"].dropna().iloc[0]) if "youden_run1" in df.columns and df["youden_run1"].notna().any() else None
+    stats["youden_run2"] = float(df["youden_run2"].dropna().iloc[0]) if "youden_run2" in df.columns and df["youden_run2"].notna().any() else None
+
+    # Passed counts on sims
+    if {"true_label", "passed_run1", "passed_run2"}.issubset(set(df.columns)):
+        sims = df[df["true_label"] == 0]
+        stats["n_sim_passed_both"] = int(((sims["passed_run1"] == True) & (sims["passed_run2"] == True)).sum())  # noqa: E712
+    else:
+        stats["n_sim_passed_both"] = None
+
+    return stats
+
+
+def make_violin_plot(df: pd.DataFrame) -> go.Figure:
+    """
+    Violin plots Réel vs Simulé pour RUN1 et RUN2 (meilleur classifieur),
+    avec couleurs cohérentes.
+    """
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("RUN 1", "RUN 2"), horizontal_spacing=0.12)
+
+    if df.empty or "true_label" not in df.columns:
+        fig.add_annotation(text="Aucune donnée", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+        fig.update_layout(template="plotly_white", height=450)
+        return fig
+
+    violin_opacity = 0.6
+    points_opacity = 0.35
+
+    for col, run_name, col_idx, youden_col in [
+        ("prob_real_run1", "RUN 1", 1, "youden_run1"),
+        ("prob_real_run2", "RUN 2", 2, "youden_run2"),
+    ]:
+        if col not in df.columns:
+            continue
+        # Downsample simulés pour matcher le nombre de réels (comparaison équitable)
+        real_vals_full = df.loc[df["true_label"] == 1, col].dropna().to_numpy()
+        sim_vals_full = df.loc[df["true_label"] == 0, col].dropna().to_numpy()
+        n = min(len(real_vals_full), len(sim_vals_full))
+        if n == 0:
+            continue
+        rng = np.random.default_rng(42)
+        real_vals = real_vals_full if len(real_vals_full) == n else rng.choice(real_vals_full, size=n, replace=False)
+        sim_vals = sim_vals_full if len(sim_vals_full) == n else rng.choice(sim_vals_full, size=n, replace=False)
+
+        for label_val, name, color in [(0, "Simulé", COLOR_SIM), (1, "Réel", COLOR_REAL)]:
+            vals = sim_vals if label_val == 0 else real_vals
+            fig.add_trace(
+                go.Violin(
+                    y=vals * 100.0,
+                    name=f"{name} (n={len(vals)})",
+                    legendgroup=name,
+                    showlegend=(col_idx == 1),
+                    line_color=color,
+                    fillcolor=color,
+                    opacity=violin_opacity,
+                    box_visible=True,
+                    meanline_visible=False,
+                    points="outliers",
+                    marker=dict(color=color, opacity=points_opacity, size=4),
+                ),
+                row=1,
+                col=col_idx,
+            )
+
+        # Seuil Youden du run
+        if youden_col in df.columns and df[youden_col].notna().any():
+            thr = float(df[youden_col].dropna().iloc[0]) * 100.0
+            fig.add_hline(
+                y=thr,
+                line_dash="dash",
+                line_color="red",
+                line_width=2,
+                # Eviter d'empiéter sur le titre du subplot
+                annotation_text=f"Youden: {thr:.1f}%",
+                annotation_position="bottom right",
+                annotation_font=dict(size=10),
+                annotation_yshift=-20,
+                row=1,
+                col=col_idx,
+            )
+
+    fig.update_yaxes(range=[0, 100], ticksuffix="%", title_text="Probabilité prédite (%)", row=1, col=1)
+    fig.update_yaxes(range=[0, 100], ticksuffix="%", title_text="Probabilité prédite (%)", row=1, col=2)
+    fig.update_layout(template="plotly_white", height=520, title="Distribution des probabilités (Meilleur classifieur) — RUN 1 vs RUN 2")
+    return fig
+
+
+def make_histograms(df: pd.DataFrame) -> go.Figure:
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("RUN 1", "RUN 2"), horizontal_spacing=0.12)
+    if df.empty or "true_label" not in df.columns:
+        fig.add_annotation(text="Données insuffisantes pour histogrammes", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+        fig.update_layout(template="plotly_white", height=450)
+        return fig
+
+    for col, col_idx, youden_col in [
+        ("prob_real_run1", 1, "youden_run1"),
+        ("prob_real_run2", 2, "youden_run2"),
+    ]:
+        if col not in df.columns:
+            continue
+        sim_full = df.loc[df["true_label"] == 0, col].dropna().to_numpy()
+        real_full = df.loc[df["true_label"] == 1, col].dropna().to_numpy()
+        n = min(len(real_full), len(sim_full))
+        if n == 0:
+            continue
+        rng = np.random.default_rng(42)
+        sim = (sim_full if len(sim_full) == n else rng.choice(sim_full, size=n, replace=False)) * 100.0
+        real = (real_full if len(real_full) == n else rng.choice(real_full, size=n, replace=False)) * 100.0
+
+        fig.add_trace(go.Histogram(x=real, nbinsx=40, name=f"Réel (n={len(real)})", marker_color=COLOR_REAL, opacity=0.6, showlegend=(col_idx == 1)), row=1, col=col_idx)
+        fig.add_trace(go.Histogram(x=sim, nbinsx=40, name=f"Simulé (n={len(sim)})", marker_color=COLOR_SIM, opacity=0.6, showlegend=(col_idx == 1)), row=1, col=col_idx)
+
+        if youden_col in df.columns and df[youden_col].notna().any():
+            thr = float(df[youden_col].dropna().iloc[0]) * 100.0
+            # Mettre l'annotation en bas pour éviter les titres
+            fig.add_vline(
+                x=thr,
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"Youden: {thr:.1f}%",
+                annotation_position="bottom",
+                annotation_font=dict(size=10),
+                annotation_yshift=-20,
+                row=1,
+                col=col_idx,
+            )
+
+    fig.update_layout(template="plotly_white", height=520, barmode="overlay", title="Histogrammes des probabilités — RUN 1 vs RUN 2")
+    fig.update_xaxes(range=[0, 100], ticksuffix="%")
+    fig.update_yaxes(title_text="Fréquence")
+    return fig
+
+
+def make_boxplot_comparison(df: pd.DataFrame) -> go.Figure:
+    # 4 boxplots lisibles: (RUN1, RUN2) x (Réel, Simulé) sans chevauchement
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("RUN 1", "RUN 2"), horizontal_spacing=0.12)
+    if df.empty or "true_label" not in df.columns:
+        fig.add_annotation(text="Données insuffisantes pour boxplot", x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False)
+        fig.update_layout(template="plotly_white", height=450)
+        return fig
+
+    for col_idx, (run_col, youden_col) in enumerate(
+        [("prob_real_run1", "youden_run1"), ("prob_real_run2", "youden_run2")],
+        start=1,
+    ):
+        if run_col not in df.columns:
+            continue
+
+        # Même stratégie: échantillonner pour comparer à effectifs égaux
+        real_full = df.loc[df["true_label"] == 1, run_col].dropna().to_numpy()
+        sim_full = df.loc[df["true_label"] == 0, run_col].dropna().to_numpy()
+        n = min(len(real_full), len(sim_full))
+        if n == 0:
+            continue
+        rng = np.random.default_rng(42)
+        real_sample = real_full if len(real_full) == n else rng.choice(real_full, size=n, replace=False)
+        sim_sample = sim_full if len(sim_full) == n else rng.choice(sim_full, size=n, replace=False)
+
+        fig.add_trace(
+            go.Box(
+                y=sim_sample * 100.0,
+                name=f"Simulé (n={n})",
+                marker_color=COLOR_SIM,
+                boxmean=False,
+                showlegend=(col_idx == 1),
+                legendgroup="Simulé",
+            ),
+            row=1,
+            col=col_idx,
+        )
+        fig.add_trace(
+            go.Box(
+                y=real_sample * 100.0,
+                name=f"Réel (n={n})",
+                marker_color=COLOR_REAL,
+                boxmean=False,
+                showlegend=(col_idx == 1),
+                legendgroup="Réel",
+            ),
+            row=1,
+            col=col_idx,
+        )
+
+        # Youden en bas (évite les titres)
+        if youden_col in df.columns and df[youden_col].notna().any():
+            thr = float(df[youden_col].dropna().iloc[0]) * 100.0
+            fig.add_hline(
+                y=thr,
+                line_dash="dot",
+                line_color="red",
+                line_width=2,
+                annotation_text=f"Youden: {thr:.1f}%",
+                annotation_position="bottom right",
+                annotation_font=dict(size=10),
+                annotation_yshift=-20,
+                row=1,
+                col=col_idx,
+            )
+
+    fig.update_layout(
+        template="plotly_white",
+        height=550,
+        title="Boxplots (Réel vs Simulé) — RUN 1 vs RUN 2",
+        yaxis_title="Probabilité prédite (%)",
+    )
+    fig.update_yaxes(range=[0, 100], ticksuffix="%")
+    return fig
 
 
 def create_roc_curves_plotly(classifier):
@@ -569,8 +1217,30 @@ def create_roc_curves_plotly(classifier):
                     y=roc_data["tpr"],
                     mode='lines',
                     name=f'RUN {run_num} (AUC = {auc_score:.3f})',
-                    line=dict(color=colors[f"run_{run_num}"], width=2)
+                    line=dict(color=colors[f"run_{run_num}"], width=2),
                 ))
+
+                # Seuil optimal de Youden (max TPR - FPR) + point sur la courbe
+                if "threshold" in roc_data.columns:
+                    try:
+                        j = (roc_data["tpr"] - roc_data["fpr"]).to_numpy()
+                        idx = int(np.nanargmax(j))
+                        youden_thr = float(roc_data["threshold"].iloc[idx])
+                        youden_fpr = float(roc_data["fpr"].iloc[idx])
+                        youden_tpr = float(roc_data["tpr"].iloc[idx])
+
+                        fig.add_trace(go.Scatter(
+                            x=[youden_fpr],
+                            y=[youden_tpr],
+                            mode="markers",
+                            name=f"RUN {run_num} Youden: {youden_thr:.3f}",
+                            marker=dict(size=10, color=colors[f"run_{run_num}"], symbol="x"),
+                            showlegend=True,
+                            hovertemplate="Youden threshold: %{customdata:.3f}<br>FPR=%{x:.3f}<br>TPR=%{y:.3f}<extra></extra>",
+                            customdata=[youden_thr],
+                        ))
+                    except Exception:
+                        pass
         
         if found_data:
             # Ligne de référence (classifieur aléatoire)
@@ -829,10 +1499,10 @@ def make_app():
         """List available files in the left column; updates periodically or on click."""
         try:
             # Metrics
-            metrics_file = results_path() / "metrics" / "phylo_metrics.csv"
+            metrics_file = results_path() / "metrics_results" / "mpd_results.csv"
             if metrics_file.exists():
                 mf_node = dbc.Badge(
-                    [html.I(className="bi bi-check-circle me-1"), "phylo_metrics.csv"],
+                    [html.I(className="bi bi-check-circle me-1"), "mpd_results.csv"],
                     color="success",
                     className="me-1"
                 )
@@ -842,20 +1512,71 @@ def make_app():
                     color="secondary"
                 )
 
-            # Classification (attempt common filenames)
+            # Classification (adapter aux sorties actuelles: parquet/logs/exports)
             cd = results_path() / "classification"
             classif_candidates = []
             if cd.exists():
-                for candidate in sorted(cd.glob("*.csv")):
+                def file_row(p: Path, label: str | None = None):
+                    ok = p.exists()
+                    icon = "bi-check-circle" if ok else "bi-x-circle"
+                    color = "#198754" if ok else "#6c757d"
+                    rel = None
+                    try:
+                        rel = str(p.resolve().relative_to(results_path().resolve()))
+                    except Exception:
+                        rel = None
+                    return html.Div(
+                        [
+                            html.I(className=f"bi {icon} me-1", style={"color": color}),
+                            (html.A(
+                                label or str(p.relative_to(cd)),
+                                href=f"/view-results/{rel}" if (ok and rel and p.is_file()) else None,
+                                target="_blank",
+                                style={"textDecoration": "none"} if (ok and rel and p.is_file()) else {},
+                            ) if (label or True) else html.Span("")),
+                            (html.Span(" ", className="me-1") if (ok and rel and p.is_file()) else html.Span()),
+                            (html.A(
+                                "[download]",
+                                href=f"/download-results/{rel}",
+                                target="_blank",
+                                className="small text-muted",
+                                style={"marginLeft": "6px"},
+                            ) if (ok and rel and p.is_file()) else html.Span()),
+                        ],
+                        className="mb-1",
+                    )
+
+                # fichiers clés
+                classif_candidates.extend(
+                    [
+                        file_row(cd / "pipeline_20251217-120751.log", "pipeline log (dernier)"),
+                        file_row(cd / "run_1" / "preds_run1.parquet"),
+                        file_row(cd / "run_2" / "preds_run2.parquet"),
+                        file_row(cd / "run_2" / "dashboard_dataset.parquet"),
+                        file_row(cd / "run_2" / "new_sim_predictions.parquet"),
+                    ]
+                )
+
+                # afficher le vrai "dernier pipeline log" si présent
+                pipeline_logs = sorted(cd.glob("pipeline_*.log"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if pipeline_logs:
+                    classif_candidates[0] = file_row(pipeline_logs[0], f"pipeline log (dernier): {pipeline_logs[0].name}")
+
+                # exports (dossiers)
+                exports_dir = cd / "exports"
+                if exports_dir.exists():
                     classif_candidates.append(
-                        html.Div([
-                            html.I(className="bi bi-file-earmark-spreadsheet me-1"),
-                            html.Span(candidate.name, className="small")
-                        ], className="mb-1")
+                        html.Div(
+                            [
+                                html.I(className="bi bi-folder2-open me-1"),
+                                html.A("exports/", href="/browse-results/classification/exports", target="_blank", className="small", style={"textDecoration": "none"}),
+                            ],
+                            className="mt-2 mb-1",
+                        )
                     )
             if not classif_candidates:
                 classif_candidates = [html.Div(
-                    [html.I(className="bi bi-info-circle me-1"), "Aucun CSV de classification"],
+                    [html.I(className="bi bi-info-circle me-1"), "Aucun fichier de classification trouvé"],
                     className="text-muted small"
                 )]
 
@@ -990,6 +1711,8 @@ def make_app():
                 
                 # Récupérer les statistiques des runs
                 run_stats = get_run_statistics()
+                ds_df = load_dashboard_dataset_df(classif_dir)
+                ds_stats = compute_dashboard_stats(ds_df) if ds_df is not None else None
                 
                 children = [
                     html.H3("Résultats de Classification", className="mb-4 text-center"),
@@ -1021,23 +1744,61 @@ def make_app():
                             dbc.Card([
                                 dbc.CardHeader("Après RUN 2"),
                                 dbc.CardBody([
-                                    html.P([html.Strong("Simulées gardées: "), f"{run_stats['run2_kept_sim']}"]),
-                                    html.P([html.Strong("% depuis RUN 1: "), f"{run_stats['run2_kept_percentage_from_run1']:.2f}%"]),
-                                    html.P([html.Strong("% depuis initial: "), f"{run_stats['run2_kept_percentage_from_initial']:.2f}%"]),
-                                    html.P([html.Strong("Threshold: "), f"{run_stats.get('run2_threshold', 'N/A')}"]),
+                                    html.P([html.Strong("Simulées gardées (log): "), f"{run_stats['run2_kept_sim']}"]),
+                                    html.P([html.Strong("% depuis RUN 1 (log): "), f"{run_stats['run2_kept_percentage_from_run1']:.2f}%"]),
+                                    html.P([html.Strong("% depuis initial (log): "), f"{run_stats['run2_kept_percentage_from_initial']:.2f}%"]),
+                                    html.P([html.Strong("Threshold RUN2 (log): "), f"{run_stats.get('run2_threshold', 'N/A')}"]),
+                                    html.Hr(),
+                                    html.P([html.Strong("Dataset dashboard: "), "OK" if ds_stats else "N/A"]),
+                                    html.P([html.Strong("Youden RUN1 (dataset): "), f"{ds_stats['youden_run1']:.4f}" if ds_stats and ds_stats.get("youden_run1") is not None else "N/A"]),
+                                    html.P([html.Strong("Youden RUN2 (dataset): "), f"{ds_stats['youden_run2']:.4f}" if ds_stats and ds_stats.get("youden_run2") is not None else "N/A"]),
+                                    html.P([html.Strong("Simulés passés R1&R2 (dataset): "), f"{ds_stats['n_sim_passed_both']}" if ds_stats and ds_stats.get("n_sim_passed_both") is not None else "N/A"]),
                                 ])
                             ])
                         ], width=3),
                         dbc.Col([
                             dbc.Card([
-                                dbc.CardHeader("Chemins des données utilisées pour RUN 2"),
+                                dbc.CardHeader("Dossiers de résultats (RUN 2 / exports)"),
                                 dbc.CardBody([
-                                    html.P([html.Strong("Réelles: ")], style={"fontSize": "10px"}),
-                                    html.P(run_stats['run2_real_path'], style={"fontSize": "9px", "wordBreak": "break-all"}),
-                                    html.P([html.Strong("Simulées (gardées après RUN 1): ")], style={"fontSize": "10px"}),
-                                    html.P(run_stats['run2_sim_path'], style={"fontSize": "9px", "wordBreak": "break-all"}),
-                                    html.P("Note: Ces simulations ont été gardées après RUN 1 et réutilisées pour RUN 2", 
-                                           style={"fontSize": "8px", "color": "gray", "marginTop": "5px"}),
+                                    html.P([html.Strong("RUN2 réelles (entrée): ")], style={"fontSize": "10px"}),
+                                    html.P(
+                                        html.A(
+                                            str((classif_dir / "run_2_real").resolve()),
+                                            href="/browse-results/classification/run_2_real",
+                                            target="_blank",
+                                            style={"textDecoration": "none", "fontSize": "9px", "wordBreak": "break-all"},
+                                        )
+                                    ),
+                                    html.P([html.Strong("RUN2 simulées (entrée): ")], style={"fontSize": "10px"}),
+                                    html.P(
+                                        html.A(
+                                            str((classif_dir / "run_2_sim").resolve()),
+                                            href="/browse-results/classification/run_2_sim",
+                                            target="_blank",
+                                            style={"textDecoration": "none", "fontSize": "9px", "wordBreak": "break-all"},
+                                        )
+                                    ),
+                                    html.Hr(),
+                                    html.P([html.Strong("RUN2 new_sim/: ")], style={"fontSize": "10px"}),
+                                    html.P(
+                                        html.A(
+                                            str((classif_dir / "run_2" / "new_sim").resolve()),
+                                            href="/browse-results/classification/run_2/new_sim",
+                                            target="_blank",
+                                            style={"textDecoration": "none", "fontSize": "9px", "wordBreak": "break-all"},
+                                        )
+                                    ),
+                                    html.Hr(),
+                                    html.P([html.Strong("Exports (canonique): ")], style={"fontSize": "10px"}),
+                                    html.P(
+                                        html.A(
+                                            str((classif_dir / "exports").resolve()),
+                                            href="/browse-results/classification/exports",
+                                            target="_blank",
+                                            style={"textDecoration": "none", "fontSize": "9px", "wordBreak": "break-all"},
+                                        )
+                                    ),
+                                    html.P("Note: `exports/run2_dataset/` contient les FASTA utilisés pour RUN2 (real/sim).", style={"fontSize": "8px", "color": "gray", "marginTop": "5px"}),
                                 ])
                             ])
                         ], width=3),
@@ -1046,72 +1807,30 @@ def make_app():
                 ]
                 
                 # ==========================================
-                # SECTION 1: VIOLIN PLOTS (du meilleur classificateur)
+                # SECTION 1-2: PLOTS DIRECTS (sans iframe) depuis dashboard_dataset.parquet
                 # ==========================================
-                violin_file = predictions_dir / "violin_plots_with_boxes.html"
-                if violin_file.exists():
-                    # Lire le contenu HTML et l'intégrer directement
-                    with open(violin_file, 'r', encoding='utf-8') as f:
-                        violin_html = f.read()
-                    
+                if ds_df is not None and not ds_df.empty:
+                    # Pour les distributions (violin/hist/box): afficher le dataset complet RUN2 (Réel + Simulé)
+                    # afin d'avoir des histogrammes corrects (pas biaisés par le filtre "passé").
+                    ds_view = ds_df
+
                     children.extend([
                         html.H4(f"Distribution des probabilités (Meilleur: {best_clf})", className="mb-3"),
-                        html.P("Violin plots avec box plots intégrés montrant la distribution des probabilités prédites pour les alignements réels vs simulés.", className="text-muted"),
-                        html.Div(
-                            html.Iframe(
-                                srcDoc=violin_html,
-                                style={"width": "100%", "height": "650px", "border": "1px solid #ddd"}
-                            )
+                        html.P(
+                            "Réel (bleu) vs Simulé (violet). Les seuils de Youden sont indiqués sur chaque run.",
+                            className="text-muted",
                         ),
-                        html.Hr(className="my-4"),
-                    ])
-                else:
-                        children.append(html.Div(f"Violin plots non trouvés: {violin_file}", className="alert alert-warning"))
-                
-                # ==========================================
-                # SECTION 2: HISTOGRAMMES ET BOXPLOTS (du meilleur)
-                # ==========================================
-                children.append(html.H4(f"Analyses complémentaires - {best_clf}", className="mb-3"))
-                
-                histogram_file = predictions_dir / "histograms_interactive.html"
-                boxplot_file = predictions_dir / "boxplots_comparison_interactive.html"
-                
-                hist_content = None
-                box_content = None
-                
-                if histogram_file.exists():
-                    with open(histogram_file, 'r', encoding='utf-8') as f:
-                        hist_content = f.read()
-                
-                if boxplot_file.exists():
-                    with open(boxplot_file, 'r', encoding='utf-8') as f:
-                        box_content = f.read()
-                
-                if hist_content and box_content:
-                    children.extend([
                         dbc.Row([
-                            dbc.Col([
-                                html.H5("Histogrammes", className="text-center mb-2"),
-                                html.Iframe(
-                                    srcDoc=hist_content,
-                                    style={"width": "100%", "height": "500px", "border": "1px solid #ddd"}
-                                ),
-                            ], width=6),
-                            dbc.Col([
-                                html.H5("Comparaison Boxplots", className="text-center mb-2"),
-                                html.Iframe(
-                                    srcDoc=box_content,
-                                    style={"width": "100%", "height": "500px", "border": "1px solid #ddd"}
-                                ),
-                            ], width=6),
+                            dbc.Col([dcc.Graph(figure=make_violin_plot(ds_view), id="violin-direct")], width=12),
+                        ], className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([dcc.Graph(figure=make_histograms(ds_view), id="hist-direct")], width=6),
+                            dbc.Col([dcc.Graph(figure=make_boxplot_comparison(ds_view), id="box-direct")], width=6),
                         ], className="mb-4"),
                         html.Hr(className="my-4"),
                     ])
                 else:
-                    if not histogram_file.exists():
-                        children.append(html.Div("Histogrammes non trouvés", className="alert alert-warning mb-2"))
-                    if not boxplot_file.exists():
-                        children.append(html.Div("Boxplots non trouvés", className="alert alert-warning mb-2"))
+                    children.append(html.Div("Dataset dashboard non trouvé. Lance: uv run python scripts/build_dashboard_dataset.py", className="alert alert-warning"))
                 
                 # ==========================================
                 # SECTION 3: SÉLECTION DU CLASSIFICATEUR
@@ -1146,9 +1865,16 @@ def make_app():
                         html.Hr(className="my-4"),
                         html.H4("Comparaison des scores Run1 vs Run2", className="mb-3"),
                         html.P(
-                            "Scatter plot montrant les scores de prédiction dans Run1 et Run2. "
-                            "Les couleurs indiquent si l'alignement est réel (bleu) ou simulé (rouge).",
-                            className="text-muted"
+                            """
+                            Nuage de points montrant les scores de prédiction des courses 1 et 2.
+                            Seuls les alignements retenus après Run 1 sont affichés (présents dans run_2_real/ et run_2_sim/).
+                            Les lignes en pointillés indiquent les seuils de Youden.
+                            Les couleurs représentent l’état de filtrage dans Run 2 : Réel (bleu), Simulé retenu dans Run 1 et Run 2 (vert), Simulé retenu uniquement dans Run 1 (orange), Simulé retenu uniquement dans Run 2 (jaune) et Alignements simulés filtrés (rouge).
+                            """, className="text-muted"
+                        ),
+                        html.P(
+                            "La légende est interactive : en cliquant sur une catégorie, on cache ou on montre les points correspondants, ce qui permet d’explorer de manière ciblée des sous-ensembles d’alignement spécifiques dans le nuage de points." ,  className="alert alert-warning"
+
                         ),
                         dcc.Graph(figure=scatter_fig, id="scatter-run1-run2"),
                         html.Hr(className="my-4"),
@@ -1353,19 +2079,9 @@ def make_app():
                     params = parse_qs(url_search.lstrip('?'))
                     if 'tree' in params:
                         tree_name = params['tree'][0]
-                
-                # Debug: afficher les paramètres URL
-                debug_info = dbc.Alert([
-                    html.Strong("Debug - URL params:"),
-                    html.Br(),
-                    html.Small(f"URL search: {url_search}", className="text-muted"),
-                    html.Br(),
-                    html.Small(f"Tree name: {tree_name}", className="text-muted")
-                ], color="light", className="mb-2")
-                
+
                 if not tree_name:
                     return html.Div([
-                        debug_info,
                         dbc.Card([
                             dbc.CardBody([
                                 html.Div([
@@ -1382,7 +2098,6 @@ def make_app():
                 p = results_path() / "trees" / tree_name
                 if not p.exists():
                     return html.Div([
-                        debug_info,
                         dbc.Alert(f"Le fichier d'arbre '{tree_name}' n'existe plus. Chemin: {p}", color="danger")
                     ])
                 
@@ -1522,7 +2237,7 @@ def make_app():
                         ], color="info")
                     )
                 
-                return html.Div([debug_info] + content)
+                return html.Div(content)
 
             elif tab == "tab-logs":
                 lf = get_project_root() / "logs" / "pipeline_log.csv"
@@ -1558,22 +2273,171 @@ def make_app():
                         
                         df_logs["duration"] = df_logs["duration"].apply(format_duration)
                     
-                    # Colorer le statut
-                    def colorize_status(row):
-                        status = str(row["status"]).lower() if pd.notna(row["status"]) else ""
-                        status_str = str(row["status"]) if pd.notna(row["status"]) else "N/A"
-                        if "success" in status:
-                            return "[OK] " + status_str
-                        elif "error" in status:
-                            return "[ERROR] " + status_str
-                        else:
-                            return "[INFO] " + status_str
-                    
-                    if "status" in df_logs.columns:
-                        df_logs["status"] = df_logs.apply(colorize_status, axis=1)
-                    
                     # Limiter à 100 dernières entrées
                     display_df = df_logs.head(100)
+
+                    def parse_args(val):
+                        if pd.isna(val):
+                            return None
+                        s = str(val)
+                        # La colonne args est souvent un repr() de dict python
+                        try:
+                            return ast.literal_eval(s)
+                        except Exception:
+                            # Certains logs contiennent des objets non-littéraux (ex: <function ...>)
+                            try:
+                                s2 = re.sub(r"<function[^>]*>", "'<function>'", s)
+                                return ast.literal_eval(s2)
+                            except Exception:
+                                pass
+                            # fallback: essayer json direct
+                            try:
+                                return json.loads(s)
+                            except Exception:
+                                return s
+
+                    def pretty_json(obj) -> str:
+                        if obj is None:
+                            return ""
+                        if isinstance(obj, str):
+                            return obj
+                        return json.dumps(obj, indent=2, ensure_ascii=False, default=str)
+
+                    def status_badge(status_raw: str):
+                        s = (status_raw or "").lower()
+                        if "success" in s or s.strip() == "ok":
+                            return dbc.Badge("[OK]", color="success", pill=True, className="me-2")
+                        if "error" in s or "failed" in s or "exception" in s:
+                            return dbc.Badge("[ERROR]", color="danger", pill=True, className="me-2")
+                        return dbc.Badge("[INFO]", color="secondary", pill=True, className="me-2")
+
+                    accordion_items = []
+                    for _, row in display_df.iterrows():
+                        step = str(row.get("step", "N/A"))
+                        status = str(row.get("status", "N/A"))
+                        duration = str(row.get("duration", ""))
+                        raw_args = row.get("args", "")
+                        args_obj = parse_args(raw_args)
+                        args_pretty = pretty_json(args_obj)
+
+                        # Extraire une "commande" si possible
+                        cmd = None
+                        if isinstance(args_obj, dict):
+                            cmd = args_obj.get("command") or args_obj.get("cmd")
+                        if not cmd:
+                            # fallback si args non parseable: extraire depuis la string
+                            try:
+                                m = re.search(r"['\"]command['\"]\s*:\s*['\"]([^'\"]+)['\"]", str(raw_args))
+                                if m:
+                                    cmd = m.group(1)
+                            except Exception:
+                                pass
+
+                        def build_cmdline(obj, raw) -> str:
+                            """Construit une pseudo ligne de commande lisible."""
+                            if isinstance(obj, dict):
+                                parts = [str(obj.get("command") or obj.get("cmd") or "")]
+                                # ordre préférentiel
+                                preferred = ["yaml", "config", "real_align", "sim_align", "align", "tree", "output", "threshold", "tools", "two_iterations", "no_progress"]
+                                keys = [k for k in preferred if k in obj] + [k for k in obj.keys() if k not in preferred and k not in ("command", "cmd", "func")]
+                                for k in keys:
+                                    v = obj.get(k)
+                                    if v is None:
+                                        continue
+                                    flag = f"--{k.replace('_','-')}"
+                                    if isinstance(v, bool):
+                                        if v:
+                                            parts.append(flag)
+                                    else:
+                                        parts.append(flag)
+                                        parts.append(str(v))
+                                line = " ".join([p for p in parts if p])
+                                return line.strip() or "(non disponible)"
+                            # si c'est une string, retourner la version brute (raccourcie)
+                            s = str(raw)
+                            return (s[:400] + (" ..." if len(s) > 400 else "")) if s else "(non disponible)"
+
+                        cmdline = build_cmdline(args_obj, raw_args)
+
+                        title = html.Div(
+                            [
+                                status_badge(status),
+                                html.Span(step, style={"fontWeight": 700}),
+                                html.Span(f"  {duration}" if duration else "", className="text-muted small ms-2"),
+                                html.Div(
+                                    status,
+                                    className="text-muted",
+                                    style={"fontSize": "12px", "marginTop": "2px"},
+                                ),
+                            ],
+                            style={"lineHeight": "1.15"},
+                        )
+
+                        accordion_items.append(
+                            dbc.AccordionItem(
+                                [
+                                    html.Div(
+                                        [
+                                            html.Div(
+                                                [
+                                                    html.Div(
+                                                        [
+                                                            html.Small("commande:", className="text-muted"),
+                                                            html.Div(
+                                                                [
+                                                                    html.Span(
+                                                                        (cmd or "commande"),
+                                                                        style={"color": "#7ee787", "fontWeight": 800},
+                                                                    ),
+                                                                    html.Span("  ", style={"whiteSpace": "pre"}),
+                                                                    html.Span(
+                                                                        cmdline.replace(str(cmd or ""), "", 1).strip() if cmd else cmdline,
+                                                                        style={"color": "#c9d1d9"},
+                                                                    ),
+                                                                ],
+                                                                style={
+                                                                    "backgroundColor": "#0b1220",
+                                                                    "color": "#e6edf3",
+                                                                    "padding": "10px 12px",
+                                                                    "borderRadius": "8px",
+                                                                    "fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                                                                    "fontSize": "13px",
+                                                                    "border": "1px solid rgba(255,255,255,0.08)",
+                                                                    "overflowX": "auto",
+                                                                    "whiteSpace": "pre",
+                                                                },
+                                                            )
+                                                        ],
+                                                        className="mb-2",
+                                                    ),
+                                                    html.Div(
+                                                        [
+                                                            html.Small("args:", className="text-muted"),
+                                                            html.Pre(
+                                                                args_pretty,
+                                                                style={
+                                                                    "backgroundColor": "#0b1220",
+                                                                    "color": "#c9d1d9",
+                                                                    "padding": "10px 12px",
+                                                                    "borderRadius": "8px",
+                                                                    "fontFamily": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                                                                    "fontSize": "12px",
+                                                                    "maxHeight": "260px",
+                                                                    "overflowY": "auto",
+                                                                    "overflowX": "auto",
+                                                                    "border": "1px solid rgba(255,255,255,0.08)",
+                                                                },
+                                                            ),
+                                                        ]
+                                                    ),
+                                                ]
+                                            )
+                                        ]
+                                    )
+                                ],
+                                title=title,
+                            )
+                        )
                     
                     return html.Div([
                         dbc.Card([
@@ -1588,25 +2452,20 @@ def make_app():
                                     html.Strong(f"Total d'entrées: {len(df_logs)} | "),
                                     f"Affichage des {min(100, len(df_logs))} plus récentes"
                                 ], color="info", className="mb-3"),
-                                
-                                html.Div([
-                                    dbc.Table.from_dataframe(
-                                        display_df,
-                                        striped=True,
-                                        bordered=True,
-                                        hover=True,
-                                        responsive=True,
-                                        size="sm",
-                                        style={"fontSize": "13px"}
-                                    )
-                                ], style={"maxHeight": "600px", "overflowY": "auto"}),
+
+                                dbc.Accordion(
+                                    accordion_items,
+                                    start_collapsed=True,
+                                    flush=True,
+                                    always_open=False,
+                                ),
                                 
                                 html.Hr(),
                                 dbc.Button(
                                     [html.I(className="bi bi-download me-2"), "Télécharger les logs complets"],
                                     color="secondary",
                                     size="sm",
-                                    href=str(lf),
+                                    href="/download-results/logs/pipeline_log.csv",
                                     external_link=True
                                 )
                             ])
@@ -1749,6 +2608,69 @@ def make_app():
         if not p.exists():
             return flask.abort(404)
         return flask.send_file(str(p), as_attachment=True, download_name=filename)
+
+    def _safe_results_path(rel_path: str) -> Path | None:
+        """
+        Construit un chemin sûr sous results/ (protège contre ..).
+        Retourne None si le chemin sort de results/.
+        """
+        base = results_path().resolve()
+        p = (base / rel_path).resolve()
+        try:
+            p.relative_to(base)
+        except Exception:
+            return None
+        return p
+
+    @server.route("/download-results/<path:relpath>")
+    def download_results(relpath):
+        p = _safe_results_path(relpath)
+        if p is None or (not p.exists()) or p.is_dir():
+            return flask.abort(404)
+        return flask.send_file(str(p), as_attachment=True, download_name=p.name)
+
+    @server.route("/view-results/<path:relpath>")
+    def view_results(relpath):
+        p = _safe_results_path(relpath)
+        if p is None or (not p.exists()) or p.is_dir():
+            return flask.abort(404)
+        # Affichage texte simple (limite taille)
+        try:
+            size = p.stat().st_size
+            max_bytes = 200_000
+            with open(p, "rb") as f:
+                raw = f.read(max_bytes)
+            text = raw.decode("utf-8", errors="replace")
+            if size > max_bytes:
+                text += "\n\n... (tronqué) ..."
+        except Exception as e:
+            text = f"Erreur de lecture: {e}"
+        return flask.Response(
+            f"<pre style='white-space:pre-wrap;font-family:monospace'>{escape(text)}</pre>",
+            mimetype="text/html",
+        )
+
+    @server.route("/browse-results/<path:relpath>")
+    def browse_results(relpath):
+        p = _safe_results_path(relpath)
+        if p is None or (not p.exists()) or (not p.is_dir()):
+            return flask.abort(404)
+        items = []
+        for child in sorted(p.iterdir()):
+            rel = str(child.resolve().relative_to(results_path().resolve()))
+            if child.is_dir():
+                items.append(f"<li>📁 <a href='/browse-results/{rel}'>{child.name}/</a></li>")
+            else:
+                items.append(
+                    f"<li>📄 {child.name} "
+                    f"[<a href='/view-results/{rel}'>view</a>] "
+                    f"[<a href='/download-results/{rel}'>download</a>]</li>"
+                )
+        html_body = (
+            f"<h3>Browsing: results/{escape(relpath)}</h3>"
+            "<ul>" + "\n".join(items) + "</ul>"
+        )
+        return flask.Response(html_body, mimetype="text/html")
 
     return app, server
 
