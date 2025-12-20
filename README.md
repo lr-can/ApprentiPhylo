@@ -76,7 +76,7 @@ The required libraries are:
 - **bpp-popgen**
 
 For detailed installation instructions, see the official guide:  
-https://github.com/BioPP/bpp-documentation.wiki.git
+https://github.com/BioPP/bpp-documentation/wiki/Installation
 
 ## 3.3. Installation
 You can install the project automatically (recommended) or manually.
@@ -129,7 +129,7 @@ pip install -r requirements.txt
 
 - (Optional) Ensure external tools are accessible:
 ```
-which FastTree
+which FastTree    mv FastTree fasttree
 which bppseqgen
 ```
 
@@ -217,19 +217,19 @@ The simulate command runs the complete simulation workflow:
 
 ▪️ Command
 ```
-python3 scripts/main2.py simulate [options]
+python3 scripts/main.py simulate [options]
 ```
 
 ▪️ Option 1 — Using a YAML configuration
 ```
-python3 scripts/main2.py simulate --yaml config/simulate.yaml
+python3 scripts/main.py simulate --yaml config/simulate.yaml
 ```
 
 The YAML file must contain a simulate section defining all required parameters.
 
 ▪️ Option 2 — Using command-line arguments
 ```
-python3 scripts/main2.py simulate \
+python3 scripts/main.py simulate \
   --pre-input data/prot_mammals \
   --pre-output results/preprocessed \
   --minseq 5 \
@@ -269,12 +269,12 @@ The metrics command computes phylogenetic metrics (e.g. MPD) between empirical a
 
 ▪️ Command
 ```
-python3 scripts/main2.py metrics [options]
+python3 scripts/main.py metrics [options]
 ```
 
 Example
 ```
-python3 scripts/main2.py metrics \
+python3 scripts/main.py metrics \
   --empirical results/preprocessed/clean_data \
   --simulation results/simulations \
   --output results \
@@ -309,13 +309,13 @@ python3 scripts/main2.py classify [options]
 
 ▪️ Option 1 — Using a YAML configuration
 ```
-python3 scripts/main2.py classify --yaml config/classify.yaml
+python3 scripts/main.py classify --yaml config/classify.yaml
 ```
 
 ▪️ Option 2 — Using command-line arguments
 ```
 Run 1 only
-python3 scripts/main2.py classify \
+python3 scripts/main.py classify \
   --real-align results/preprocessed/clean_data \
   --sim-align results/simulations \
   --output results/classification \
@@ -324,7 +324,7 @@ python3 scripts/main2.py classify \
 ```
 ```
 Run 1 + Run 2 (refinement)
-python3 scripts/main2.py classify \
+python3 scripts/main.py classify \
   --real-align results/preprocessed/clean_data \
   --sim-align results/simulations \
   --output results/classification \
@@ -334,7 +334,7 @@ python3 scripts/main2.py classify \
 ```
 ```
 Run 1 + Run 2 + PDF report
-python3 scripts/main2.py classify \
+python3 scripts/main.py classify \
   --real-align results/preprocessed/clean_data \
   --sim-align results/simulations \
   --output results/classification \
@@ -368,7 +368,7 @@ The visualisation command launches an interactive Dash dashboard to explore clas
 
 ▪️ Command
 ```
-python3 scripts/main2.py visualisation
+python3 scripts/main.py visualisation
 ```
 
 This starts a local web server displaying interactive plots and summaries.
